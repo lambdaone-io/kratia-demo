@@ -1,0 +1,1 @@
+Builds niginx image that serves the front end

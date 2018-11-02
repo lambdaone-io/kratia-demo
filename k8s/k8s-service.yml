@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: kratia-demo
+spec:
+  type: NodePort
+  ports:
+    - name: curri-elm
+      port: 80
+      targetPort: 80
+  selector:
+    app: kratia-demo

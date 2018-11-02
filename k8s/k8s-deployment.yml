@@ -1,0 +1,18 @@
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: %APP_NAME%
+spec:
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: %APP_NAME%
+    spec:
+      containers:
+      - name: kratia-demo
+        image: %REGISTRY%/%APP_NAME%:%VERSION%
+        ports:
+        - containerPort: 80
+      imagePullSecrets:
+      - name: regcred

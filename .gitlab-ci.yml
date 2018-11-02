@@ -1,0 +1,71 @@
+
+services:
+  - docker:dind
+
+before_script:
+
+after_script:
+
+stages:
+  - build
+  - publish
+  - test
+  - deploy
+
+variables:
+  REGISTRY: registry.gitlab.com/kolov
+  APP_NAME: kratia-demo
+
+job-build-node:
+  stage: build
+  image: trion/ng-cli:1.5.0
+  script:
+    - npm install elm@0.18
+    - yarn
+    - yarn build
+    - npx webpack
+  only:
+    - master
+  tags:
+    - docker
+  cache:
+    paths:
+      - node_modules
+      - dist
+
+job-build-docker:
+  stage: publish
+  image: docker:dind
+  script:
+    - cp docker/Dockerfile dist
+    - cp docker/nginx/nginx.conf dist
+    - grep Drop -r dist
+    - docker build -t $REGISTRY/$APP_NAME:$CI_COMMIT_SHA dist
+    - docker login -u gitlab-ci-token -p $CI_BUILD_TOKEN registry.gitlab.com
+    - docker push $REGISTRY/$APP_NAME:$CI_COMMIT_SHA
+    - docker tag  $REGISTRY/$APP_NAME:$CI_COMMIT_SHA $REGISTRY/$APP_NAME:master
+    - docker push $REGISTRY/$APP_NAME:master
+  only:
+    - master
+  tags:
+    - docker
+  cache:
+    paths:
+      - dist
+
+job-deploy:
+  stage: deploy
+  image: google/cloud-sdk:latest
+  script:
+    - mkdir ~/.kube
+    - echo $KUBE_CONFIG | base64 --decode > ~/.kube/config
+    - kubectl get nodes
+    - sed -e s@%VERSION%@$CI_COMMIT_SHA@g -e s@%APP_NAME%@$APP_NAME@g -e s@%REGISTRY%@$REGISTRY@g k8s/k8s-deployment.yml > k8s-deployment-latest.yml
+    - cat k8s-deployment-latest.yml
+    - kubectl apply -f k8s-deployment-latest.yml
+    - kubectl apply -f k8s/k8s-service.yml
+    - echo Deployed $APP_NAME/$$APP_NAME:$CI_COMMIT_SHA
+  only:
+    - master
+  tags:
+    - docker
