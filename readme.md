@@ -1,6 +1,4 @@
-# An example SPA in Elm
-
-An example Elm single page application built for http://www.elm-tutorial.org/
+# Kratia demo application
 
 ## Setup
 
