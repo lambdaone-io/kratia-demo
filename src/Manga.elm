@@ -11,8 +11,10 @@ import Base64 exposing(..)
 mangaArea: Manga -> Html msg
 mangaArea manga =
   div []
-    [ text "Here's some manga",
-      ul []
-           (List.map (\c -> li [] [div [] [text c.name, img [ src c.imageUrl, width 32 ] []] ]) manga.characters)
+    [ div  [] [h1 [] [text "Community members"]],
+
+       div []
+       (List.map (\c ->   div [] [text c.name, img [ src c.imageUrl, width 32 ] []] ) manga.characters)
+
     ]
 
