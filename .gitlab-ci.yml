@@ -20,10 +20,9 @@ job-build-node:
   stage: build
   image: trion/ng-cli:1.5.0
   script:
-    - npm install elm@0.18
     - yarn
     - yarn build
-    - npx webpack --mode=development
+#    - npx webpack --mode=development
   only:
     - master
   tags:
@@ -39,7 +38,7 @@ job-build-docker:
   script:
     - cp docker/Dockerfile dist
     - cp docker/nginx/nginx.conf dist
-    - grep Drop -r dist
+    - cp src/image.html dist
     - docker build -t $REGISTRY/$APP_NAME:$CI_COMMIT_SHA dist
     - docker login -u gitlab-ci-token -p $CI_BUILD_TOKEN registry.gitlab.com
     - docker push $REGISTRY/$APP_NAME:$CI_COMMIT_SHA
