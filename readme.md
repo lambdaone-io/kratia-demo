@@ -24,4 +24,4 @@ Open `http://localhost:3000`
 
 ## Continuous Delivery
 
-Webpack doens't work with Elm .19. Run locally with `yarn.start`.
+`master` is continuously deplpyed to http://demo.lambdaone.io/
