@@ -20,7 +20,6 @@ job-build-node:
   stage: build
   image: codesimple/elm:0.19
   script:
-    - npm install elm@0.19
     - yarn
     - yarn build
 #    - npx webpack --mode=development
