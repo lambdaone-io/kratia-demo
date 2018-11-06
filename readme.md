@@ -1,3 +1,5 @@
+[![Waffle.io - Columns and their card count](https://badge.waffle.io/lambdaone-io/kratia-centralized.svg?columns=all)](https://waffle.io/lambdaone-io/kratia-centralized)
+
 # Kratia demo application
 
 ## Setup
