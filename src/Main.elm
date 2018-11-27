@@ -2,24 +2,33 @@ module Main exposing (main)
 
 import Html exposing (..)
 import Html.Attributes exposing (..)
-import Html.Events exposing (onClick)
+import Html.Events exposing (onClick, onSubmit, onInput)
+
+import Http exposing (Body, Expect)
+import Json.Decode as Decode exposing (Decoder, Value, field, string)
+import Json.Encode as Encode
+import Member exposing (Cred(..), registrationResponseDecoder)
+
+
 import Browser.Navigation as Navigation
 import Browser exposing (UrlRequest)
 import Url exposing (Url)
 import Url.Parser as UrlParser exposing ((</>), Parser, s, top)
 import Bootstrap.Navbar as Navbar
 import Bootstrap.Grid as Grid
+import Bootstrap.Form as Form
 import Bootstrap.Grid.Col as Col
 import Bootstrap.Card as Card
 import Bootstrap.Card.Block as Block
 import Bootstrap.Button as Button
 import Bootstrap.ListGroup as Listgroup
 import Bootstrap.Modal as Modal
+import Bootstrap.Form.Input as Input
+import Bootstrap.Button as Button
 
 import Shared exposing (..)
 import Http exposing (send)
-import Manga exposing (Manga, communityView, mangaDecoder)
-
+import Member exposing (Cred(..), RegistrationResponse, registrationResponseDecoder)
 
 
 main : Program Flags Model Msg
@@ -31,6 +40,7 @@ main =
         , subscriptions = subscriptions
         , onUrlRequest = ClickedLink
         , onUrlChange = UrlChange
+
         }
 
 init : Flags -> Url -> Navigation.Key -> ( Model, Cmd Msg )
@@ -42,14 +52,17 @@ init flags url key =
         ( model, urlCmd ) =
             urlUpdate url
             {
-            manga = Loading,
+            user = Nothing,
             navKey = key,
             navState = navState,
             page = Home,
-            modalVisibility= Modal.hidden
+            modalVisibility = Modal.hidden
+            , loading = False
+            , nickname = ""
+            , flags = flags
             }
     in
-        ( model, Cmd.batch [ urlCmd, navCmd, fetchManga flags.services.manga ] )
+        ( model, Cmd.batch [ urlCmd, navCmd] )
 
 
 
@@ -59,7 +72,9 @@ type Msg
     | NavMsg Navbar.State
     | CloseModal
     | ShowModal
-    | OnFetchManga (Result Http.Error Manga)
+    | RegisterMember
+    | Registered (Result Http.Error RegistrationResponse)
+    | EnteredNickname String
 
 
 subscriptions : Model -> Sub Msg
@@ -96,11 +111,16 @@ update msg model =
             ( { model | modalVisibility = Modal.shown }
             , Cmd.none
             )
+        Registered (Ok response) -> ( { model | user = Just (Cred "username" "xx") }
+                                   , Cmd.none
+                                   )
+        Registered (Err err) ->
+                            ( model, Cmd.none )
+        EnteredNickname nickname ->
+                    ( { model | nickname = nickname }, Cmd.none )
+        RegisterMember ->
+                    ( { model | loading = True }, register model.flags.services.kratia model.nickname )
 
-        OnFetchManga (Ok manga) ->
-                    ( { model | manga = Loaded manga }, Cmd.none )
-        OnFetchManga (Err err) ->
-                    ( { model | manga = Failure }, Cmd.none )
 
 
 
@@ -124,14 +144,13 @@ routeParser : Parser (Page -> a) a
 routeParser =
     UrlParser.oneOf
         [ UrlParser.map Home top
-        , UrlParser.map GettingStarted (s "getting-started")
-        , UrlParser.map Modules (s "modules")
+        , UrlParser.map GettingStarted (s "some-page")
         ]
 
 
 view : Model -> Browser.Document Msg
 view model =
-    { title = "Elm Bootstrap"
+    { title = "Kratia"
     , body =
         [ div []
             [ menu model
@@ -148,10 +167,9 @@ menu model =
     Navbar.config NavMsg
         |> Navbar.withAnimation
         |> Navbar.container
-        |> Navbar.brand [ href "#" ] [ text "Elm Bootstrap" ]
+        |> Navbar.brand [ href "#" ] [ text "Kratia" ]
         |> Navbar.items
-            [ Navbar.itemLink [ href "#getting-started" ] [ text "Getting started" ]
-            , Navbar.itemLink [ href "#modules" ] [ text "Modules" ]
+            [ Navbar.itemLink [ href "#some-page" ] [ text "Some page" ]
             ]
         |> Navbar.view model.navState
 
@@ -166,42 +184,24 @@ mainContent model =
             GettingStarted ->
                 pageGettingStarted model
 
-            Modules ->
-                pageModules model
-
             NotFound ->
                 pageNotFound
 
 
 pageHome : Model -> List (Html Msg)
 pageHome model =
-    [ h1 [] [ text "Home" ]
-    , Grid.row []
+    [
+     Grid.row []
         [ Grid.col []
             [ Card.config [ Card.outlinePrimary ]
                 |> Card.headerH4 [] [ text "Getting started" ]
                 |> Card.block []
                     [ Block.text [] [ text "Getting started is real easy. Just click the start button." ]
-                    , Block.custom <|
-                        Button.linkButton
-                            [ Button.primary, Button.attrs [ href "#getting-started" ] ]
-                            [ text "Start" ]
-                    , Block.custom <| mangasView model
+                    , Block.custom <| userView model
                     ]
                 |> Card.view
             ]
-        , Grid.col []
-            [ Card.config [ Card.outlineDanger ]
-                |> Card.headerH4 [] [ text "Modules" ]
-                |> Card.block []
-                    [ Block.text [] [ text "Check out the modules overview" ]
-                    , Block.custom <|
-                        Button.linkButton
-                            [ Button.primary, Button.attrs [ href "#modules" ] ]
-                            [ text "Module" ]
-                    ]
-                |> Card.view
-            ]
+
         ]
     ]
 
@@ -216,17 +216,6 @@ pageGettingStarted model =
         , Button.attrs [ onClick ShowModal ]
         ]
         [ text "Click me" ]
-    ]
-
-
-pageModules : Model -> List (Html Msg)
-pageModules model =
-    [ h1 [] [ text "Modules" ]
-    , Listgroup.ul
-        [ Listgroup.li [] [ text "Alert" ]
-        , Listgroup.li [] [ text "Badge" ]
-        , Listgroup.li [] [ text "Card" ]
-        ]
     ]
 
 
@@ -256,22 +245,46 @@ modal model =
             ]
         |> Modal.view model.modalVisibility
 
-
-fetchManga : String -> Cmd Msg
-fetchManga service =
-    Http.get (service ++ "/manga/1/characters") mangaDecoder
-        |> Http.send OnFetchManga
-
-mangasView : Model -> Html Msg
-mangasView model =
+userView : Model -> Html Msg
+userView model =
     let
         content =
-            case model.manga of
-                NotAsked -> text ""
-                Loading -> text "Loading ..."
-                Loaded manga -> communityView manga
-                Failure -> text "Error"
+            case model.user of
+                Nothing -> form model
+                Just u -> text ("Welcome, " ++ model.nickname)
     in
     section []
         [  div [ class "p-4" ] [ content ]
         ]
+
+form : Model -> Html Msg
+form model =
+    Form.formInline
+        [ onSubmit RegisterMember ]
+        [ Input.text [ Input.attrs
+            [ placeholder "Nickname"
+            , disabled model.loading
+            , value model.nickname
+            , onInput EnteredNickname
+            ] ]
+        , Button.button
+            [ Button.primary
+            , Button.attrs [ class "ml-sm-2 my-2" ]
+            ]
+            [ text "Register" ]
+        ]
+
+
+
+rootCommunity : String
+rootCommunity = "19ce7b9b-a4da-4f9c-9838-c04fcb0ce9db"
+
+
+register : String -> String  -> Cmd Msg
+register server nickname =
+ Http.post (server ++ "/api/v1/registry")
+   (Http.jsonBody <| Encode.object
+     [ ( "community", Encode.string rootCommunity )
+     , ( "data", Encode.string nickname )
+     ]) registrationResponseDecoder
+     |> Http.send Registered

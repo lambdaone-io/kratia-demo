@@ -9,12 +9,12 @@ import Bootstrap.Button as Button
 import Bootstrap.ListGroup as Listgroup
 import Bootstrap.Modal as Modal
 import Browser.Navigation as Navigation
-import Manga exposing (Manga)
+import Member exposing (Cred(..) )
 
 type alias Flags =
     {
     services: {
-      manga : String
+      kratia : String
     }
     }
 
@@ -23,13 +23,16 @@ type alias Model =
     , page : Page
     , navState : Navbar.State
     , modalVisibility : Modal.Visibility
-    , manga : RemoteData Manga
+    , user : Maybe Cred
+    , nickname: String
+    , loading: Bool
+    , flags: Flags
+
     }
 
 type Page
     = Home
     | GettingStarted
-    | Modules
     | NotFound
 
 type RemoteData a
