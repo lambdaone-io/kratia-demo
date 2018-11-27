@@ -7,7 +7,7 @@ import Html.Events exposing (onClick, onSubmit, onInput)
 import Http exposing (Body, Expect)
 import Json.Decode as Decode exposing (Decoder, Value, field, string)
 import Json.Encode as Encode
-import Member exposing (Cred(..), registrationResponseDecoder)
+import Member exposing (Cred(..), registrationResponseDecoder, username)
 
 
 import Browser.Navigation as Navigation
@@ -52,7 +52,7 @@ init flags url key =
         ( model, urlCmd ) =
             urlUpdate url
             {
-            user = Nothing,
+            maybeCred = Nothing,
             navKey = key,
             navState = navState,
             page = Home,
@@ -73,7 +73,7 @@ type Msg
     | CloseModal
     | ShowModal
     | RegisterMember
-    | Registered (Result Http.Error RegistrationResponse)
+    | Registered (Result Http.Error RegistrationResponse) String
     | EnteredNickname String
 
 
@@ -111,10 +111,10 @@ update msg model =
             ( { model | modalVisibility = Modal.shown }
             , Cmd.none
             )
-        Registered (Ok response) -> ( { model | user = Just (Cred "username" "xx") }
+        Registered (Ok response) nickname-> ( { model | maybeCred = Just (Cred nickname response.member) }
                                    , Cmd.none
                                    )
-        Registered (Err err) ->
+        Registered (Err err) nickname ->
                             ( model, Cmd.none )
         EnteredNickname nickname ->
                     ( { model | nickname = nickname }, Cmd.none )
@@ -249,9 +249,9 @@ userView : Model -> Html Msg
 userView model =
     let
         content =
-            case model.user of
+            case model.maybeCred of
                 Nothing -> form model
-                Just u -> text ("Welcome, " ++ model.nickname)
+                Just cred -> text ("Welcome, " ++ (username cred))
     in
     section []
         [  div [ class "p-4" ] [ content ]
@@ -275,7 +275,6 @@ form model =
         ]
 
 
-
 rootCommunity : String
 rootCommunity = "19ce7b9b-a4da-4f9c-9838-c04fcb0ce9db"
 
@@ -287,4 +286,4 @@ register server nickname =
      [ ( "community", Encode.string rootCommunity )
      , ( "data", Encode.string nickname )
      ]) registrationResponseDecoder
-     |> Http.send Registered
+     |> Http.send (\resp -> Registered resp nickname)

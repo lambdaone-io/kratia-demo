@@ -23,7 +23,7 @@ type alias Model =
     , page : Page
     , navState : Navbar.State
     , modalVisibility : Modal.Visibility
-    , user : Maybe Cred
+    , maybeCred : Maybe Cred
     , nickname: String
     , loading: Bool
     , flags: Flags
