@@ -87,39 +87,16 @@ update msg model =
     case msg of
         ClickedLink req ->
              case req of
-                 Browser.Internal url ->
-                     ( model, Navigation.pushUrl model.navKey <| Url.toString url )
-
-                 Browser.External href ->
-                     ( model, Navigation.load href )
-
-
-        UrlChange url ->
-            urlUpdate url model
-
-        NavMsg state ->
-            ( { model | navState = state }
-            , Cmd.none
-            )
-
-        CloseModal ->
-            ( { model | modalVisibility = Modal.hidden }
-            , Cmd.none
-            )
-
-        ShowModal ->
-            ( { model | modalVisibility = Modal.shown }
-            , Cmd.none
-            )
-        Registered (Ok response) nickname-> ( { model | maybeCred = Just (Cred nickname response.member) }
-                                   , Cmd.none
-                                   )
-        Registered (Err err) nickname ->
-                            ( model, Cmd.none )
-        EnteredNickname nickname ->
-                    ( { model | nickname = nickname }, Cmd.none )
-        RegisterMember ->
-                    ( { model | loading = True }, register model.flags.services.kratia model.nickname )
+                 Browser.Internal url -> ( model, Navigation.pushUrl model.navKey <| Url.toString url )
+                 Browser.External href -> ( model, Navigation.load href )
+        UrlChange url -> urlUpdate url model
+        NavMsg state -> ( { model | navState = state } , Cmd.none )
+        CloseModal -> ( { model | modalVisibility = Modal.hidden } , Cmd.none )
+        ShowModal -> ( { model | modalVisibility = Modal.shown } , Cmd.none )
+        Registered (Ok response) nickname-> ( { model | maybeCred = Just (Cred nickname response.member) } , Cmd.none )
+        Registered (Err err) nickname -> ( model, Cmd.none )
+        EnteredNickname nickname -> ( { model | nickname = nickname }, Cmd.none )
+        RegisterMember -> ( { model | loading = True }, register model.flags.services.kratia model.nickname )
 
 
 
@@ -171,6 +148,14 @@ menu model =
         |> Navbar.items
             [ Navbar.itemLink [ href "#some-page" ] [ text "Some page" ]
             ]
+        |> Navbar.customItems
+            [ Navbar.textItem []
+            [ let
+               content =
+                case model.maybeCred of
+                  Nothing -> "Please, login"
+                  Just cred ->  "Welcome, " ++ (username cred)
+              in text content] ]
         |> Navbar.view model.navState
 
 
@@ -251,7 +236,7 @@ userView model =
         content =
             case model.maybeCred of
                 Nothing -> form model
-                Just cred -> text ("Welcome, " ++ (username cred))
+                Just cred -> text ""
     in
     section []
         [  div [ class "p-4" ] [ content ]
