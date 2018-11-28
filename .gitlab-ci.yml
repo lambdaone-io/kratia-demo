@@ -26,6 +26,7 @@ job-build-node:
 #    - npx webpack --mode=development
   only:
     - master
+    - ci
   tags:
     - docker
   cache:
@@ -47,6 +48,7 @@ job-build-docker:
     - docker push $REGISTRY/$APP_NAME:master
   only:
     - master
+    - ci
   tags:
     - docker
   cache:
@@ -67,5 +69,6 @@ job-deploy:
     - echo Deployed $APP_NAME/$$APP_NAME:$CI_COMMIT_SHA
   only:
     - master
+    - ci
   tags:
     - docker
