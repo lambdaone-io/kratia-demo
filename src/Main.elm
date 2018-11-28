@@ -173,16 +173,17 @@ mainContent model =
                 pageNotFound
 
 
+
+
 pageHome : Model -> List (Html Msg)
 pageHome model =
     [
      Grid.row []
         [ Grid.col []
             [ Card.config [ Card.outlinePrimary ]
-                |> Card.headerH4 [] [ text "Getting started" ]
+                |> Card.headerH4 [] [ text "Kratia Demo" ]
                 |> Card.block []
-                    [ Block.text [] [ text "Getting started is real easy. Just click the start button." ]
-                    , Block.custom <| userView model
+                    [  Block.custom <| userView model
                     ]
                 |> Card.view
             ]
@@ -230,17 +231,27 @@ modal model =
             ]
         |> Modal.view model.modalVisibility
 
+welcoming : Html Msg
+welcoming =
+    div []
+        [ h1 [] [ text "" ]
+        , p [] [ text "Welcome to the Kratia Demo" ]
+        , p [] [ text "Kratia empowers communities by enabling them with digital governance. It helps the communities grow, evolve and adapt by offering lego blocks for them to design their collaborative decision-making process." ]
+        , p [] [ text "To start with the demo, please register with a nickname:" ]
+        ]
+
 userView : Model -> Html Msg
 userView model =
     let
         content =
             case model.maybeCred of
-                Nothing -> form model
-                Just cred -> text ""
+                Nothing -> [  welcoming,
+                                      div [ class "p-4" ] [ form model ]
+                                   ]
+                Just cred -> []
     in
-    section []
-        [  div [ class "p-4" ] [ content ]
-        ]
+    section [] content
+
 
 form : Model -> Html Msg
 form model =
