@@ -54,6 +54,8 @@ job-build-docker:
   cache:
     paths:
       - dist
+      - node_modules
+      - elm_stuff
 
 job-deploy:
   stage: deploy
