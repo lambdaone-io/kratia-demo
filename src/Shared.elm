@@ -6,10 +6,13 @@ import Bootstrap.Grid.Col as Col
 import Bootstrap.Card as Card
 import Bootstrap.Card.Block as Block
 import Bootstrap.Button as Button
-import Bootstrap.ListGroup as Listgroup
 import Bootstrap.Modal as Modal
 import Browser.Navigation as Navigation
 import Member exposing (Cred(..) )
+import Browser exposing (UrlRequest)
+import Http exposing (Body, Expect)
+
+import Url exposing (Url)
 
 type alias Flags =
     {
@@ -40,3 +43,14 @@ type RemoteData a
     | Loading
     | Loaded a
     | Failure
+
+
+type Msg
+    = UrlChange Url
+    | ClickedLink UrlRequest
+    | NavMsg Navbar.State
+    | CloseModal
+    | ShowModal
+    | RegisterMember
+    | Registered (Result Http.Error String) String
+    | EnteredNickname String

@@ -1,5 +1,6 @@
 module Main exposing (main)
 
+import Api exposing (register, registrationResponseDecoder)
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (onClick, onSubmit, onInput)
@@ -7,11 +8,11 @@ import Html.Events exposing (onClick, onSubmit, onInput)
 import Http exposing (Body, Expect)
 import Json.Decode as Decode exposing (Decoder, Value, field, string)
 import Json.Encode as Encode
-import Member exposing (Cred(..), registrationResponseDecoder, username)
 
 
 import Browser.Navigation as Navigation
 import Browser exposing (UrlRequest)
+import Page.Registration exposing (userView)
 import Url exposing (Url)
 import Url.Parser as UrlParser exposing ((</>), Parser, s, top)
 import Bootstrap.Navbar as Navbar
@@ -28,7 +29,7 @@ import Bootstrap.Button as Button
 
 import Shared exposing (..)
 import Http exposing (send)
-import Member exposing (Cred(..), RegistrationResponse, registrationResponseDecoder)
+import Member exposing (Cred(..), username)
 
 
 main : Program Flags Model Msg
@@ -66,15 +67,6 @@ init flags url key =
 
 
 
-type Msg
-    = UrlChange Url
-    | ClickedLink UrlRequest
-    | NavMsg Navbar.State
-    | CloseModal
-    | ShowModal
-    | RegisterMember
-    | Registered (Result Http.Error RegistrationResponse) String
-    | EnteredNickname String
 
 
 subscriptions : Model -> Sub Msg
@@ -93,7 +85,7 @@ update msg model =
         NavMsg state -> ( { model | navState = state } , Cmd.none )
         CloseModal -> ( { model | modalVisibility = Modal.hidden } , Cmd.none )
         ShowModal -> ( { model | modalVisibility = Modal.shown } , Cmd.none )
-        Registered (Ok response) nickname-> ( { model | maybeCred = Just (Cred nickname response.member) } , Cmd.none )
+        Registered (Ok member) nickname -> ( { model | maybeCred = Just (Cred nickname member) } , Cmd.none )
         Registered (Err err) nickname -> ( model, Cmd.none )
         EnteredNickname nickname -> ( { model | nickname = nickname }, Cmd.none )
         RegisterMember -> ( { model | loading = True }, register model.flags.services.kratia model.nickname )
@@ -231,55 +223,5 @@ modal model =
             ]
         |> Modal.view model.modalVisibility
 
-welcoming : Html Msg
-welcoming =
-    div []
-        [ h1 [] [ text "" ]
-        , p [] [ text "Welcome to the Kratia Demo" ]
-        , p [] [ text "Kratia empowers communities by enabling them with digital governance. It helps the communities grow, evolve and adapt by offering lego blocks for them to design their collaborative decision-making process." ]
-        , p [] [ text "To start with the demo, please register with a nickname:" ]
-        ]
-
-userView : Model -> Html Msg
-userView model =
-    let
-        content =
-            case model.maybeCred of
-                Nothing -> [  welcoming,
-                                      div [ class "p-4" ] [ form model ]
-                                   ]
-                Just cred -> []
-    in
-    section [] content
 
 
-form : Model -> Html Msg
-form model =
-    Form.formInline
-        [ onSubmit RegisterMember ]
-        [ Input.text [ Input.attrs
-            [ placeholder "Nickname"
-            , disabled model.loading
-            , value model.nickname
-            , onInput EnteredNickname
-            ] ]
-        , Button.button
-            [ Button.primary
-            , Button.attrs [ class "ml-sm-2 my-2" ]
-            ]
-            [ text "Register" ]
-        ]
-
-
-rootCommunity : String
-rootCommunity = "19ce7b9b-a4da-4f9c-9838-c04fcb0ce9db"
-
-
-register : String -> String  -> Cmd Msg
-register server nickname =
- Http.post (server ++ "/api/v1/registry")
-   (Http.jsonBody <| Encode.object
-     [ ( "community", Encode.string rootCommunity )
-     , ( "data", Encode.string nickname )
-     ]) registrationResponseDecoder
-     |> Http.send (\resp -> Registered resp nickname)

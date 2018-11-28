@@ -40,19 +40,4 @@ credHeader : Cred -> Http.Header
 credHeader (Cred _ token) =
  Http.header "Authorization" ("Bearer " ++ token)
 
-type alias RegistrationRequest =
-    { community: String
-    , data: String
-    }
 
-type alias RegistrationResponse =
-    {  member: String
-    }
-
-
--- DECODERS
-
-registrationResponseDecoder : Decode.Decoder RegistrationResponse
-registrationResponseDecoder =
-    Decode.succeed RegistrationResponse
-        |> required "member" Decode.string
