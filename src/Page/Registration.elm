@@ -1,14 +1,8 @@
-module Page.Registration exposing (..)
+module Page.Registration exposing (userView)
 
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (onClick, onSubmit, onInput)
-
-import Http exposing (Body, Expect)
-import Json.Decode as Decode exposing (Decoder, Value, field, string)
-import Json.Encode as Encode
-import Member exposing (Cred(..), username)
-
 
 import Browser.Navigation as Navigation
 import Browser exposing (UrlRequest)
@@ -27,8 +21,22 @@ import Bootstrap.Form.Input as Input
 import Bootstrap.Button as Button
 
 import Shared exposing (..)
-import Http exposing (send)
-import Member exposing (Cred(..) )
+
+
+
+userView : Model -> Html Msg
+userView model =
+    let 
+        content =
+            case model.maybeCred of
+                Nothing -> 
+                    [  welcoming, div [ class "p-4" ] [ form model ] ]
+
+                Just cred -> 
+                    []
+    in
+        section [] content
+
 
 welcoming : Html Msg
 welcoming =
@@ -39,18 +47,6 @@ welcoming =
         , p [] [ text "To start with the demo, please register with a nickname:" ]
         ]
 
-userView : Model -> Html Msg
-userView model =
-    let
-        content =
-            case model.maybeCred of
-                Nothing -> [  welcoming,
-                                      div [ class "p-4" ] [ form model ]
-                                   ]
-                Just cred -> []
-    in
-    section [] content
-
 
 form : Model -> Html Msg
 form model =
@@ -59,7 +55,7 @@ form model =
         [ Input.text [ Input.attrs
             [ placeholder "Nickname"
             , disabled model.loading
-            , value model.nickname
+            , value model.nicknameInput
             , onInput EnteredNickname
             ] ]
         , Button.button

@@ -1,6 +1,6 @@
 module Main exposing (main)
 
-import Api exposing (register, registrationResponseDecoder)
+import Api exposing (Cred, register, username)
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (onClick, onSubmit, onInput)
@@ -8,7 +8,6 @@ import Html.Events exposing (onClick, onSubmit, onInput)
 import Http exposing (Body, Expect)
 import Json.Decode as Decode exposing (Decoder, Value, field, string)
 import Json.Encode as Encode
-
 
 import Browser.Navigation as Navigation
 import Browser exposing (UrlRequest)
@@ -28,8 +27,7 @@ import Bootstrap.Form.Input as Input
 import Bootstrap.Button as Button
 
 import Shared exposing (..)
-import Http exposing (send)
-import Member exposing (Cred(..), username)
+
 
 
 main : Program Flags Model Msg
@@ -41,8 +39,8 @@ main =
         , subscriptions = subscriptions
         , onUrlRequest = ClickedLink
         , onUrlChange = UrlChange
-
         }
+
 
 init : Flags -> Url -> Navigation.Key -> ( Model, Cmd Msg )
 init flags url key =
@@ -52,21 +50,17 @@ init flags url key =
 
         ( model, urlCmd ) =
             urlUpdate url
-            {
-            maybeCred = Nothing,
-            navKey = key,
-            navState = navState,
-            page = Home,
-            modalVisibility = Modal.hidden
+            { maybeCred = Nothing
+            , navKey = key
+            , navState = navState
+            , page = Home
+            , modalVisibility = Modal.hidden
+            , nicknameInput = ""
             , loading = False
-            , nickname = ""
             , flags = flags
             }
     in
         ( model, Cmd.batch [ urlCmd, navCmd] )
-
-
-
 
 
 subscriptions : Model -> Sub Msg
@@ -77,20 +71,35 @@ subscriptions model =
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
+
         ClickedLink req ->
              case req of
                  Browser.Internal url -> ( model, Navigation.pushUrl model.navKey <| Url.toString url )
                  Browser.External href -> ( model, Navigation.load href )
-        UrlChange url -> urlUpdate url model
-        NavMsg state -> ( { model | navState = state } , Cmd.none )
-        CloseModal -> ( { model | modalVisibility = Modal.hidden } , Cmd.none )
-        ShowModal -> ( { model | modalVisibility = Modal.shown } , Cmd.none )
-        Registered (Ok member) nickname -> ( { model | maybeCred = Just (Cred nickname member) } , Cmd.none )
-        Registered (Err err) nickname -> ( model, Cmd.none )
-        EnteredNickname nickname -> ( { model | nickname = nickname }, Cmd.none )
-        RegisterMember -> ( { model | loading = True }, register model.flags.services.kratia model.nickname )
 
+        UrlChange url -> 
+            urlUpdate url model
 
+        NavMsg state -> 
+            ( { model | navState = state } , Cmd.none )
+
+        CloseModal -> 
+            ( { model | modalVisibility = Modal.hidden } , Cmd.none )
+
+        ShowModal -> 
+            ( { model | modalVisibility = Modal.shown } , Cmd.none )
+
+        Registered (Ok cred) -> 
+            ( { model | maybeCred = Just cred } , Cmd.none )
+
+        Registered (Err err) -> 
+            ( model, Cmd.none )
+
+        EnteredNickname nickname -> 
+            ( { model | nicknameInput = nickname }, Cmd.none )
+
+        RegisterMember -> 
+            ( { model | loading = True }, register model.flags.services.kratia model.nicknameInput Registered)
 
 
 urlUpdate : Url -> Model -> ( Model, Cmd Msg )
@@ -130,7 +139,6 @@ view model =
     }
 
 
-
 menu : Model -> Html Msg
 menu model =
     Navbar.config NavMsg
@@ -163,8 +171,6 @@ mainContent model =
 
             NotFound ->
                 pageNotFound
-
-
 
 
 pageHome : Model -> List (Html Msg)
@@ -222,6 +228,3 @@ modal model =
                 ]
             ]
         |> Modal.view model.modalVisibility
-
-
-

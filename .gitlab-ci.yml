@@ -23,7 +23,6 @@ job-build-node:
     - npm install elm@0.19
     - yarn
     - yarn build
-#    - npx webpack --mode=development
   only:
     - master
     - ci

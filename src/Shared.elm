@@ -8,18 +8,21 @@ import Bootstrap.Card.Block as Block
 import Bootstrap.Button as Button
 import Bootstrap.Modal as Modal
 import Browser.Navigation as Navigation
-import Member exposing (Cred(..) )
+import Api exposing (Cred)
 import Browser exposing (UrlRequest)
 import Http exposing (Body, Expect)
 
 import Url exposing (Url)
 
+
+
 type alias Flags =
     {
-    services: {
-      kratia : String
+        services: {
+            kratia : String
+        }
     }
-    }
+
 
 type alias Model =
     { navKey : Navigation.Key
@@ -27,16 +30,17 @@ type alias Model =
     , navState : Navbar.State
     , modalVisibility : Modal.Visibility
     , maybeCred : Maybe Cred
-    , nickname: String
+    , nicknameInput: String
     , loading: Bool
     , flags: Flags
-
     }
+
 
 type Page
     = Home
     | GettingStarted
     | NotFound
+
 
 type RemoteData a
     = NotAsked
@@ -52,5 +56,5 @@ type Msg
     | CloseModal
     | ShowModal
     | RegisterMember
-    | Registered (Result Http.Error String) String
+    | Registered (Result Http.Error Cred)
     | EnteredNickname String
