@@ -16,7 +16,10 @@
         node: document.getElementById("app"), 
         flags: {
             services: {
-                kratia: "http://localhost:8080"
+                kratia: {
+                    hostname: "http://localhost:8080",
+                    prefix: ["api", "v1"]
+                }
             }
         }
     });

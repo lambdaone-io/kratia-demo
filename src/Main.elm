@@ -9,12 +9,12 @@ import Html exposing (Html, div, text, h1)
 import Html.Attributes exposing (..)
 
 import Bootstrap.Navbar as Navbar
-import Bootstrap.Grid as Grid
 import Bootstrap.Grid.Col as Col
 
 import Api exposing (Cred, username, Service(..))
 import Config exposing (Config, Flags, fromFlags)
 import Route exposing (Route)
+import Page as Page exposing (Page(..))
 import Page.Registration as Reg
 
 
@@ -44,13 +44,6 @@ type alias Model =
     }
 
 
-type Page
-    = Init
-    | About
-    | Registration Reg.Model
-    | Ballots
-    | NotFound
-
 init : Flags -> Url -> Nav.Key -> ( Model, Cmd Msg )
 init flags url key =
     let 
@@ -65,7 +58,7 @@ init flags url key =
                 , config = config
                 , navKey = key
                 , navState = navState
-                , page = Init
+                , page = About
                 }
     in
         ( model, Cmd.batch [ routeCmd, navCmd ] )
@@ -85,7 +78,8 @@ subscriptions model =
 
 
 type Msg
-    = RouteChanged (Maybe Route)
+    = Ignored
+    | RouteChanged (Maybe Route)
     | UrlChanged Url
     | LinkClicked UrlRequest
     | NavMsg Navbar.State
@@ -146,70 +140,37 @@ updateWith toModel toMsg model ( subModel, subCmd ) =
 
 view : Model -> Browser.Document Msg
 view model =
-    { title = "Kratia"
-    , body =
-        [ div []
-            [ menu model
-            , mainContent model
-            ]
-        ]
-    }
+    let 
+        session = 
+            { credentials = model.credentials
+            , state = model.navState
+            }
+    in
+    case model.page of
+        NotFound ->
+            Page.view session (\_ -> Ignored) NavMsg
+                { title = "404"
+                , content =
+                    div []
+                        [ h1 [] [ text "Not found" ]
+                        , text "Sorry couldn't find that page"
+                        ]
+                }
 
+        Registration registration ->
+            Page.view session RegMsg NavMsg
+                { title = "Registration"
+                , content = Reg.view registration
+                }
 
-menu : Model -> Html Msg
-menu model =
-    Navbar.config NavMsg
-        |> Navbar.withAnimation
-        |> Navbar.container
-        |> Navbar.brand [ href "#" ] [ text "Kratia" ]
-        |> Navbar.items
-            [ Navbar.itemLink [ href "#about" ] [ text "About" ] ]
-        |> Navbar.customItems
-            [ Navbar.textItem []
-            [ let
-               content =
-                case model.credentials of
-                  Nothing -> "Please, login"
-                  Just cred ->  "Welcome, " ++ (username cred)
-              in text content] ]
-        |> Navbar.view model.navState
+        Ballots ->
+            Page.view session (\_ -> Ignored) NavMsg
+                { title = "404"
+                , content = h1 [] [ text "Ballots" ] 
+                }
 
-
-mainContent : Model -> Html Msg
-mainContent model =
-    Grid.container [] <|
-        case model.page of
-                
-            NotFound ->
-                pageNotFound
-
-            Registration registration ->
-                [ Reg.view registration ]
-
-            Ballots ->
-                [ h1 [] [ text "Ballots" ] ]
-
-            About ->
-                [ h1 [] [ text "About" ] ]
-
-
-{-
-pageHome : Model -> List (Html Msg)
-pageHome model =
-    [ Grid.row []
-        [ Grid.col []
-            [ Card.config [ Card.outlinePrimary ]
-                |> Card.headerH4 [] [ text "Kratia Demo" ]
-                |> Card.block [] [ Block.custom <| Reg.view model ]
-                |> Card.view
-            ]
-        ]
-    ]
--}
-
-
-pageNotFound : List (Html Msg)
-pageNotFound =
-    [ h1 [] [ text "Not found" ]
-    , text "Sorry couldn't find that page"
-    ]
+        About ->
+            Page.view session (\_ -> Ignored) NavMsg
+                { title = "About"
+                , content = h1 [] [ text "About" ]
+                }
