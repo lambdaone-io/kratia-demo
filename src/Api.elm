@@ -1,4 +1,4 @@
-module Api exposing (..)
+module Api exposing (Cred, Service(..), username, register)
 
 {-| This module is responsible for communicating to the Kratia API. -}
 
@@ -37,27 +37,40 @@ credHeader (Cred _ token) =
 
 
 
--- Endpoints
+-- SERVICE
+
+
+type alias Hostname = String
+
+
+type alias PathSection = String
+
+
+type Service = Service Hostname (List PathSection)
 
 
 rootCommunity : String
 rootCommunity = "19ce7b9b-a4da-4f9c-9838-c04fcb0ce9db"
 
 
-url : String -> List String -> List QueryParameter -> String
-url hostname paths queryParams =
+url : Service -> List PathSection -> List QueryParameter -> String
+url (Service hostname prefix) paths queryParams =
   Url.Builder.crossOrigin hostname
-      ("api" :: "v1" :: paths)
+      (prefix ++ paths)
       queryParams
 
 
-register : String -> String -> (Result Http.Error Cred -> msg) -> Cmd msg
-register hostname nickname msg =
+
+-- ENDPOINTS 
+
+
+register : { service : Service, nickname : String, onResponse : (Result Http.Error Cred -> msg) } -> Cmd msg
+register { service, nickname, onResponse } =
     Http.post 
-      { url = url hostname ["registry"] []
+      { url = url service ["registry"] []
       , body = Http.jsonBody <| Encode.object 
         [ ( "community", Encode.string rootCommunity )
         , ( "data", Encode.string nickname )
         ]
-      , expect = Http.expectJson (\result -> msg <| Result.map (Cred nickname) result ) (field "member" string)
+      , expect = Http.expectJson (\result -> onResponse <| Result.map (Cred nickname) result ) (field "member" string)
       }

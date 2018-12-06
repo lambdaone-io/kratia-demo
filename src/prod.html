@@ -16,7 +16,10 @@
         node: document.getElementById("app"), 
         flags: {
             services: {
-                kratia: "http://api.lambdaone.io"
+                kratia: {
+                    hostname: "http://api.lambdaone.io",
+                    prefix: ["api", "v1"]
+                }
             }
         }
     });
