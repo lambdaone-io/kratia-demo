@@ -26,7 +26,6 @@ type alias Model =
     , nicknameInput : String
     , loading : Bool
     , errorMessages: List String
-    , alertVisibility : Alert.Visibility
     }
 
 
@@ -38,7 +37,6 @@ init kratia credentials =
         , nicknameInput = "" 
         , loading = False
         , errorMessages = []
-        , alertVisibility = Alert.closed
         }
         , Cmd.none
     )
@@ -133,7 +131,3 @@ form model =
             [ text "Register" ]
         , viewErrors model
         ]
-
-subscriptions : Model -> Sub Msg
-subscriptions model =
-    Alert.subscriptions model.alertVisibility AlertMsg
