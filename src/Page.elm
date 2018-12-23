@@ -35,7 +35,7 @@ in the header. (This comes up during slow page transitions.)
 view : Session -> ( subMsg -> msg ) -> ( Navbar.State -> msg ) -> { title : String, content : Html subMsg } -> Document msg
 view session toMsg navMsg { title, content } =
     { title = title ++ " - Kratia"
-    , body = (menu session navMsg) :: [ Html.map toMsg content ]
+    , body =  (menu session navMsg) :: [ Html.map toMsg content ]
     }
 
 

@@ -7,7 +7,6 @@ import Html.Attributes exposing (..)
 import Html.Events exposing (onClick, onSubmit, onInput)
 import Http as Http
 
-import Bootstrap.Grid as Grid
 import Bootstrap.Form as Form
 import Bootstrap.Grid.Col as Col
 import Bootstrap.Button as Button
@@ -71,14 +70,13 @@ update msg model =
             ( { model | nicknameInput = nicknameInput }, Cmd.none )
 
         Registered (Ok cred) ->
-            Debug.log "OK"
             ( { model | credentials = Just cred, loading = False } , Cmd.none )
 
         Registered (Err err) ->
             ( { model | loading = False , errorMessages = model.errorMessages ++ [(Debug.toString err)] }, Cmd.none )
 
-        AlertMsg visibility ->
-            ( { model | alertVisibility = visibility }, Cmd.none )
+        AlertMsg _ ->
+            ( { model | errorMessages = [] }, Cmd.none )
 
 
 
@@ -109,8 +107,8 @@ welcoming =
 viewErrors : Model -> Html Msg
 viewErrors model =
     Alert.config
-        |> Alert.dismissable AlertMsg
         |> Alert.warning
+        |> Alert.dismissable AlertMsg
         |> Alert.children
             ([ Alert.h4 [] [ text "Errors" ]
             ] ++ (List.map (\txt -> p [] [text txt]) model.errorMessages))
@@ -129,10 +127,11 @@ form model =
             ] ]
         , Button.button
             [ Button.primary
-            , Button.attrs [ class "ml-sm-2 my-2" ]
+            , Button.attrs [ class "ml-sm-2 my-2"
+                              , disabled (String.isEmpty model.nicknameInput)]
             ]
             [ text "Register" ]
-            ,viewErrors model
+        , viewErrors model
         ]
 
 subscriptions : Model -> Sub Msg
