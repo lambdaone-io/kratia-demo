@@ -12,6 +12,7 @@ import Bootstrap.Form as Form
 import Bootstrap.Grid.Col as Col
 import Bootstrap.Button as Button
 import Bootstrap.Form.Input as Input
+import Bootstrap.Alert as Alert
 
 import Api exposing (Cred, Service, register)
 
@@ -25,6 +26,8 @@ type alias Model =
     , credentials : Maybe Cred
     , nicknameInput : String
     , loading : Bool
+    , errorMessages: List String
+    , alertVisibility : Alert.Visibility
     }
 
 
@@ -35,6 +38,8 @@ init kratia credentials =
         , credentials = credentials
         , nicknameInput = "" 
         , loading = False
+        , errorMessages = []
+        , alertVisibility = Alert.closed
         }
         , Cmd.none
     )
@@ -48,6 +53,7 @@ type Msg
     = Submitted
     | EnteredNickname String
     | Registered (Result Http.Error Cred)
+    | AlertMsg Alert.Visibility
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -64,11 +70,15 @@ update msg model =
         EnteredNickname nicknameInput ->
             ( { model | nicknameInput = nicknameInput }, Cmd.none )
 
-        Registered (Ok cred) -> 
+        Registered (Ok cred) ->
+            Debug.log "OK"
             ( { model | credentials = Just cred, loading = False } , Cmd.none )
 
-        Registered (Err err) -> 
-            ( { model | loading = False }, Cmd.none )
+        Registered (Err err) ->
+            ( { model | loading = False , errorMessages = model.errorMessages ++ [(Debug.toString err)] }, Cmd.none )
+
+        AlertMsg visibility ->
+            ( { model | alertVisibility = visibility }, Cmd.none )
 
 
 
@@ -81,7 +91,7 @@ view model =
         Nothing -> 
             [  welcoming, div [ class "p-4" ] [ form model ] ]
 
-        Just cred -> 
+        Just cred ->
             []
     )
 
@@ -92,8 +102,19 @@ welcoming =
         [ h1 [] [ text "" ]
         , p [] [ text "Welcome to the Kratia Demo" ]
         , p [] [ text "Kratia empowers communities by enabling them with digital governance. It helps the communities grow, evolve and adapt by offering lego blocks for them to design their collaborative decision-making process." ]
-        , p [] [ text "To start with the demo, please register with a nicknameInput:" ]
+        , p [] [ text "To start with the demo, please register with a nickname:" ]
         ]
+
+
+viewErrors : Model -> Html Msg
+viewErrors model =
+    Alert.config
+        |> Alert.dismissable AlertMsg
+        |> Alert.warning
+        |> Alert.children
+            ([ Alert.h4 [] [ text "Errors" ]
+            ] ++ (List.map (\txt -> p [] [text txt]) model.errorMessages))
+        |> Alert.view (if List.isEmpty model.errorMessages then Alert.closed else Alert.shown)
 
 
 form : Model -> Html Msg
@@ -111,4 +132,9 @@ form model =
             , Button.attrs [ class "ml-sm-2 my-2" ]
             ]
             [ text "Register" ]
+            ,viewErrors model
         ]
+
+subscriptions : Model -> Sub Msg
+subscriptions model =
+    Alert.subscriptions model.alertVisibility AlertMsg
