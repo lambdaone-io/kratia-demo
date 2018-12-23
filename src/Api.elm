@@ -63,6 +63,7 @@ url (Service hostname prefix) paths queryParams =
 
 -- ENDPOINTS 
 
+
 register : { service : Service, nickname : String, onResponse : (Result Http.Error Cred -> msg) } -> Cmd msg
 register { service, nickname, onResponse } =
     Http.post 

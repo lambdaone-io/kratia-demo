@@ -145,7 +145,6 @@ view model =
             { credentials = model.credentials
             , state = model.navState
             }
-        x =    ( Debug.log ("session=" ++ (Debug.toString session)))
     in
     case model.page of
         NotFound ->
