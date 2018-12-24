@@ -140,8 +140,8 @@ updateWith toModel toMsg model ( subModel, subCmd ) =
 
 view : Model -> Browser.Document Msg
 view model =
-    let 
-        session = 
+    let
+        session =
             { credentials = model.credentials
             , state = model.navState
             }
