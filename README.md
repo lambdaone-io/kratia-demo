@@ -30,4 +30,4 @@ Open `http://localhost:8000`
 
 # Local development
 
-Start the backend to listne at 8080, run `yarn start`, go to ` http://localhost:8000/`
+Start the backend to listne at 8080, run `yarn start`, go to `http://localhost:8000/`
