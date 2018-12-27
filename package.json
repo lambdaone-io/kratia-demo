@@ -9,8 +9,8 @@
   "scripts": {
     "build": "elm make ./src/Main.elm --output dist/app.js",
     "build-prod": "elm make src/Main.elm --optimize --output=dist/app.js && uglifyjs dist/app.js --compress 'pure_funcs=\"F2,F3,F4,F5,F6,F7,F8,F9,A2,A3,A4,A5,A6,A7,A8,A9\",pure_getters,keep_fargs=false,unsafe_comps,unsafe' | uglifyjs --mangle --output=dist/app.min.js && cp src/prod.html dist/index.html",
-    "start": "cp ./src/dev.html ./dist/index.html && elm-live ./src/Main.elm --push-state --dir=dist --open -- --output=dist/app.js",
-    "start-windows": "copy .\\src\\dev.html .\\dist\\index.html && elm-live .\\src\\Main.elm --push-state --dir=dist --open -- --output=dist\\app.js"
+    "start": "cp ./src/dev.html ./dist/index.html && cp -r ./src/css ./dist/css && elm-live ./src/Main.elm --push-state --dir=dist --open -- --output=dist/app.js",
+    "start-windows": "copy .\\src\\dev.html .\\dist\\index.html && xcopy .\\src\\css .\\dist\\css /E && elm-live .\\src\\Main.elm --push-state --dir=dist --open -- --output=dist\\app.js"
   },
   "author": "The Lambda One Members",
   "license": "MIT"

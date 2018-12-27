@@ -1,6 +1,5 @@
 module Page.Registration exposing (Model, init, Msg, update, view)
 
-import Browser.Navigation as Navigation
 import Browser exposing (UrlRequest)
 import Html exposing (..)
 import Html.Attributes exposing (..)
