@@ -4,14 +4,22 @@ import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (onClick, onSubmit, onInput)
 import Http as Http
+import Time exposing (Posix, Zone, utc)
 
 import Bootstrap.Grid as Grid
-import Bootstrap.Form as Form
 import Bootstrap.Grid.Col as Col
+
 import Bootstrap.Button as Button
+import Bootstrap.Card as Card
+import Bootstrap.Card.Block as Block
+
+import Bootstrap.Form as Form
 import Bootstrap.Form.Input as Input
 
-import Api exposing (Cred, Session, register)
+import DateFormat as DateFormat
+
+import Api as Api exposing (Session)
+import Kratia.Ballot exposing (Ballot)
 
 
 
@@ -19,7 +27,8 @@ import Api exposing (Cred, Session, register)
 
 
 type alias Model =
-    {  session : Session
+    { session : Session
+    , ballots : List Ballot
     }
 
 
@@ -27,8 +36,12 @@ init : Session -> ( Model, Cmd Msg )
 init session = 
     (
         { session = session
+        , ballots = []
         }
-        , Cmd.none
+        , Api.listBallots 
+            { session = session
+            , onResponse = GotBallots
+            }
     )
 
 
@@ -37,13 +50,16 @@ init session =
 
 
 type Msg 
-    = Clicked
+    = GotBallots ( Result Http.Error ( List Ballot ))
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of 
-        Clicked ->
+        GotBallots ( Ok ballots ) ->
+            ( { model | ballots = ballots }, Cmd.none )
+        
+        GotBallots ( Err _ ) ->
             ( model, Cmd.none )
 
 
@@ -60,8 +76,39 @@ view model =
                 [ Grid.col [] 
                     [ h1 [] [ text "Ballots" ] ] 
                 ]
+            , Grid.row []
+                [ Grid.col []
+                    [ div [ class "ballots" ] ( List.map renderBallot model.ballots ) ] 
+                ]
             ]
     }
+
+
+renderBallot : Ballot -> Html Msg
+renderBallot ballot = 
+    Card.config [ Card.attrs [ class "ballot" ] ]
+        |> Card.headerH3 [] [ text ballot.data ]
+        |> Card.block []
+            [ Block.titleH3 [] [ text <| ballotCardFormatter utc ballot.closesOn ]
+            , Block.text [] [ text "Vote now" ]
+            ]
+        |> Card.view
+
+
+
+-- DATE
+
+
+ballotCardFormatter : Zone -> Posix -> String
+ballotCardFormatter =
+    DateFormat.format
+        [ DateFormat.monthNameFull
+        , DateFormat.text " "
+        , DateFormat.dayOfMonthSuffix
+        , DateFormat.text ", "
+        , DateFormat.hourMilitaryFixed
+        , DateFormat.text ":00 hrs."
+        ]
 
 
 

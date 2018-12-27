@@ -1,4 +1,4 @@
-module Api exposing (Cred, Flags, Session, guest, withCreds, withNavState, username, register)
+module Api exposing (Cred, Flags, Session, guest, withCreds, withNavState, username, register, listBallots)
 
 {-| This module is responsible for communicating to the Kratia API. -}
 
@@ -7,8 +7,10 @@ import Bootstrap.Navbar as Navbar
 
 import Url.Builder exposing (QueryParameter)
 import Http exposing (Body, Expect)
-import Json.Decode as Decode exposing (Decoder, Value, field, string)
+import Json.Decode as Decode exposing (Decoder, Value, field, string, list)
 import Json.Encode as Encode
+
+import Kratia.Ballot as Ballot exposing (Ballot)
 
 
 -- CRED
@@ -114,11 +116,29 @@ url (Service hostname prefix) paths queryParams =
 
 register : { session : Session, nickname : String, onResponse : (Result Http.Error Cred -> msg) } -> Cmd msg
 register { session, nickname, onResponse } =
-    Http.post 
-      { url = url session.config.kratia ["registry"] []
-      , body = Http.jsonBody <| Encode.object 
-        [ ( "community", Encode.string rootCommunity )
-        , ( "data", Encode.string nickname )
-        ]
-      , expect = Http.expectJson (\result -> onResponse <| Result.map (Cred nickname) result ) (field "member" string)
-      }
+  Http.post 
+    { url = url session.config.kratia ["registry"] []
+    , body = Http.jsonBody <| Encode.object 
+      [ ( "community", Encode.string rootCommunity )
+      , ( "data", Encode.string nickname )
+      ]
+    , expect = Http.expectJson (\result -> onResponse <| Result.map (Cred nickname) result ) (field "member" string)
+    }
+
+
+listBallots : { session : Session, onResponse : (Result Http.Error (List Ballot) -> msg) } -> Cmd msg
+listBallots { session, onResponse } =
+  case session.credentials of
+    Nothing -> 
+      Cmd.none
+
+    Just cred ->
+      Http.request
+        { method = "GET"
+        , headers = [ credHeader cred ]
+        , url = url session.config.kratia ["collector"] []
+        , body = Http.emptyBody
+        , expect = Http.expectJson (\result -> onResponse result) (field "data" (list Ballot.decoder))
+        , timeout = Nothing
+        , tracker = Nothing
+        }
