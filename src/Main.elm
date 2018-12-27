@@ -15,6 +15,9 @@ import Api exposing (Cred, Flags, Session, guest, username, withNavState)
 import Route exposing (Route)
 import Page as Page
 import Page.Blank as Blk
+import Page.About as About
+import Page.NotFound as NtFnd
+import Page.Ballots as Ball
 import Page.Registration as Reg
 
 
@@ -40,7 +43,7 @@ type Model
     | NotFound Session
     | About Session
     | Registration Reg.Model
-    | Ballots Session
+    | Ballots Ball.Model
 
 
 init : Flags -> Url -> Nav.Key -> ( Model, Cmd Msg )
@@ -80,6 +83,7 @@ type Msg
     | LinkClicked UrlRequest
     | NavMsg Navbar.State
     | RegMsg Reg.Msg
+    | BallMsg Ball.Msg
 
 
 lastSession : Model -> Session
@@ -97,8 +101,8 @@ lastSession model =
         Registration registration ->
             Reg.toSession registration
 
-        Ballots session ->
-            session
+        Ballots ballots ->
+            Ball.toSession ballots
 
 
 updateSession : (Session -> Session) -> Model -> Model
@@ -116,8 +120,8 @@ updateSession updt model =
         Registration registration ->
             Registration <| Reg.updateSession updt registration
 
-        Ballots session ->
-            Ballots <| updt session
+        Ballots ballots ->
+            Ballots <| Ball.updateSession updt ballots
 
 
 changeRouteTo : Maybe Route -> Model -> ( Model, Cmd Msg )
@@ -138,7 +142,13 @@ changeRouteTo maybeRoute model =
                 |> updateWith Registration RegMsg model
 
         Just Route.Ballots ->
-            ( Ballots session, Cmd.none )
+            case session.credentials of 
+                Just _ ->
+                    Ball.init session  
+                        |> updateWith Ballots BallMsg model
+
+                Nothing ->
+                    ( model, Route.pushUrl Route.Registration session )
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -166,6 +176,10 @@ update msg model =
             Reg.update subMsg registration
                 |> updateWith Registration RegMsg model
 
+        ( BallMsg subMsg, Ballots ballots ) -> 
+            Ball.update subMsg ballots
+                |> updateWith Ballots BallMsg model
+
         ( _, _ ) ->
             -- Disregard messages that arrived for the wrong page.
             ( model, Cmd.none )
@@ -191,29 +205,15 @@ view model =
             Page.view session (\_ -> Ignored) NavMsg Blk.view
 
         NotFound _ ->
-            Page.view session (\_ -> Ignored) NavMsg
-                { title = "404"
-                , content =
-                    div []
-                        [ h1 [] [ text "Not found" ]
-                        , text "Sorry couldn't find that page"
-                        ]
-                }
-
-        Registration registration ->
-            Page.view session RegMsg NavMsg
-                { title = "Registration"
-                , content = Reg.view registration
-                }
-
-        Ballots _ ->
-            Page.view session (\_ -> Ignored) NavMsg
-                { title = "Ballots"
-                , content = h1 [] [ text "Ballots" ] 
-                }
+            Page.view session (\_ -> Ignored) NavMsg NtFnd.view
 
         About _ ->
-            Page.view session (\_ -> Ignored) NavMsg
-                { title = "About"
-                , content = h1 [] [ text "About" ]
-                }
+            Page.view session (\_ -> Ignored) NavMsg About.view
+
+        Registration registration ->
+            Reg.view registration
+                |> Page.view session RegMsg NavMsg
+
+        Ballots ballots ->
+            Ball.view ballots
+                |> Page.view session BallMsg NavMsg

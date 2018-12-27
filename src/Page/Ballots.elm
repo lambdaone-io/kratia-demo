@@ -1,4 +1,4 @@
-module Page.Ballots exposing (..)
+module Page.Ballots exposing (Model, Msg, init, update, view, toSession, updateSession)
 
 import Html exposing (..)
 import Html.Attributes exposing (..)
@@ -51,9 +51,28 @@ update msg model =
 -- VIEW
 
 
-view : Model -> Html Msg
+view : Model -> { title : String, content : Html Msg }
 view model =
-    section [] 
-        [ div []
-            [ h1 [] [ text "Ballots" ] ]
-        ]
+    { title = "Kratia | Ballots"
+    , content = 
+        Grid.container []
+            [ Grid.row [] 
+                [ Grid.col [] 
+                    [ h1 [] [ text "Ballots" ] ] 
+                ]
+            ]
+    }
+
+
+
+-- EXPORT
+
+
+toSession : Model -> Session
+toSession model = 
+    model.session
+
+
+updateSession : (Session -> Session) -> Model -> Model
+updateSession updt model =
+    { model | session = updt model.session }

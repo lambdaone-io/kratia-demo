@@ -7,6 +7,7 @@ import Html.Events exposing (onClick, onSubmit, onInput)
 import Http as Http
 
 import Bootstrap.Form as Form
+import Bootstrap.Grid as Grid
 import Bootstrap.Grid.Col as Col
 import Bootstrap.Button as Button
 import Bootstrap.Form.Input as Input
@@ -83,19 +84,23 @@ update msg model =
 -- VIEW
 
 
-view : Model -> Html Msg
+view : Model -> { title : String, content : Html Msg }
 view model =
-    section [] [ welcoming, div [ class "p-4" ] [ form model ] ]
+    { title = "Kratia | Register"
+    , content = 
+        Grid.container []
+            [ Grid.row [] 
+                [ Grid.col [] 
+                    [ welcoming, div [ class "p-4" ] [ form model ] ] 
+                ]
+            ]
+    }
 
 
 welcoming : Html Msg
 welcoming =
     div []
-        [ h1 [] [ text "" ]
-        , p [] [ text "Welcome to the Kratia Demo" ]
-        , p [] [ text "Kratia empowers communities by enabling them with digital governance. It helps the communities grow, evolve and adapt by offering lego blocks for them to design their collaborative decision-making process." ]
-        , p [] [ text "To start with the demo, please register with a nickname:" ]
-        ]
+        [ p [] [ text "To start with the demo, please register with a nickname:" ] ]
 
 
 viewErrors : Model -> Html Msg
