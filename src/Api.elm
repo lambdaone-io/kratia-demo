@@ -1,7 +1,9 @@
-module Api exposing (Cred, Service(..), username, register)
+module Api exposing (Cred, Flags, Session, guest, withCreds, withNavState, username, register)
 
 {-| This module is responsible for communicating to the Kratia API. -}
 
+import Browser.Navigation as Nav
+import Bootstrap.Navbar as Navbar
 
 import Url.Builder exposing (QueryParameter)
 import Http exposing (Body, Expect)
@@ -37,6 +39,52 @@ credHeader (Cred _ token) =
 
 
 
+-- SESSION
+
+
+type alias Session = 
+    { credentials : Maybe Cred
+    , navKey : Nav.Key
+    , navState : Navbar.State
+    , config : Config
+    }
+
+
+type alias Config =
+    { kratia : Service }
+
+
+type alias Flags =
+    { services : 
+        { kratia : 
+            { hostname : String
+            , prefix : List String
+            }
+        }
+    }
+
+
+guest : Flags -> Nav.Key -> Navbar.State -> Session
+guest flags key state =
+    { credentials = Nothing
+    , navKey = key
+    , navState = state 
+    , config = 
+      { kratia = Service flags.services.kratia.hostname flags.services.kratia.prefix }
+    }
+
+
+withCreds : Cred -> Session -> Session
+withCreds cred session =
+    { session | credentials = Just cred }
+
+
+withNavState : Navbar.State -> Session -> Session
+withNavState state session =
+    { session | navState = state }
+
+
+
 -- SERVICE
 
 
@@ -64,10 +112,10 @@ url (Service hostname prefix) paths queryParams =
 -- ENDPOINTS 
 
 
-register : { service : Service, nickname : String, onResponse : (Result Http.Error Cred -> msg) } -> Cmd msg
-register { service, nickname, onResponse } =
+register : { session : Session, nickname : String, onResponse : (Result Http.Error Cred -> msg) } -> Cmd msg
+register { session, nickname, onResponse } =
     Http.post 
-      { url = url service ["registry"] []
+      { url = url session.config.kratia ["registry"] []
       , body = Http.jsonBody <| Encode.object 
         [ ( "community", Encode.string rootCommunity )
         , ( "data", Encode.string nickname )

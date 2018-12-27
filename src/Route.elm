@@ -1,10 +1,12 @@
-module Route exposing (Route(..), fromUrl, href, replaceUrl)
+module Route exposing (Route(..), fromUrl, href, pushUrl, replaceUrl)
 
 import Browser.Navigation as Nav
 import Html exposing (Attribute)
 import Html.Attributes as Attr
 import Url exposing (Url)
 import Url.Parser as Parser exposing ((</>), Parser, oneOf, s, string)
+
+import Api exposing (Session)
 
 
 
@@ -34,9 +36,14 @@ href target =
     Attr.href (routeToString target)
 
 
-replaceUrl : Nav.Key -> Route -> Cmd msg
-replaceUrl key route =
-    Nav.replaceUrl key (routeToString route)
+pushUrl : Route -> Session -> Cmd msg
+pushUrl route session =
+    Nav.pushUrl session.navKey (routeToString route)
+
+
+replaceUrl : Route -> Session -> Cmd msg
+replaceUrl route session =
+    Nav.replaceUrl session.navKey (routeToString route)
 
 
 fromUrl : Url -> Maybe Route

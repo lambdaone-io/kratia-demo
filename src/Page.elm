@@ -1,4 +1,4 @@
-module Page exposing (Page(..), view)
+module Page exposing (view)
 
 
 import Bootstrap.Navbar as Navbar
@@ -7,7 +7,7 @@ import Bootstrap.Grid as Grid
 import Bootstrap.Grid.Row as Row
 import Bootstrap.Grid.Col as Col
 
-import Api exposing (Cred, username)
+import Api exposing (Cred, Session, username)
 import Html exposing (Html, div, text)
 import Html.Attributes exposing (class)
 import Browser exposing (Document)
@@ -16,19 +16,6 @@ import Route as Route
 import Page.Registration as Reg
 import Page.Ballots as Ball
 
-
-
-type Page
-    = About
-    | Registration Reg.Model
-    | Ballots -- Ball.Model
-    | NotFound
-
-
-type alias Session =
-    { credentials : Maybe Cred
-    , state : Navbar.State 
-    }
 
 
 {-| Take a page's Html and frames it with a header and footer.
@@ -62,7 +49,7 @@ menu session navMsg =
         |> Navbar.items
             [ Navbar.itemLink [ Route.href Route.About ] [ text "About" ] ]
         |> Navbar.customItems ( menuRight session )
-        |> Navbar.view session.state
+        |> Navbar.view session.navState
 
 
 menuRight : Session -> List ( Navbar.CustomItem msg )

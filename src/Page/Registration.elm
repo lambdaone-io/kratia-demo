@@ -1,4 +1,4 @@
-module Page.Registration exposing (Model, init, Msg, update, view)
+module Page.Registration exposing (Model, init, Msg, update, view, toSession, updateSession)
 
 import Browser exposing (UrlRequest)
 import Html exposing (..)
@@ -12,7 +12,8 @@ import Bootstrap.Button as Button
 import Bootstrap.Form.Input as Input
 import Bootstrap.Alert as Alert
 
-import Api exposing (Cred, Service, register)
+import Api exposing (Cred, Session, register, withCreds)
+import Route as Route
 
 
 
@@ -20,19 +21,17 @@ import Api exposing (Cred, Service, register)
 
 
 type alias Model =
-    { kratia : Service
-    , credentials : Maybe Cred
+    { session : Session
     , nicknameInput : String
     , loading : Bool
     , errorMessages: List String
     }
 
 
-init : Service -> Maybe Cred -> ( Model, Cmd Msg )
-init kratia credentials = 
+init : Session -> ( Model, Cmd Msg )
+init session = 
     (
-        { kratia = kratia
-        , credentials = credentials
+        { session = session
         , nicknameInput = "" 
         , loading = False
         , errorMessages = []
@@ -57,7 +56,7 @@ update msg model =
     case msg of 
         Submitted ->
             ( { model | loading = True }, register 
-                { service = model.kratia
+                { session = model.session
                 , nickname = model.nicknameInput 
                 , onResponse = Registered 
                 }
@@ -67,10 +66,14 @@ update msg model =
             ( { model | nicknameInput = nicknameInput }, Cmd.none )
 
         Registered (Ok cred) ->
-            ( { model | credentials = Just cred, loading = False } , Cmd.none )
+            ( { model | session = withCreds cred model.session, loading = False } 
+            , Route.pushUrl Route.Ballots model.session 
+            )
 
         Registered (Err err) ->
-            ( { model | loading = False , errorMessages = model.errorMessages ++ [(Debug.toString err)] }, Cmd.none )
+            ( { model | loading = False, errorMessages = model.errorMessages ++ [(Debug.toString err)] }
+            , Cmd.none 
+            )
 
         AlertMsg _ ->
             ( { model | errorMessages = [] }, Cmd.none )
@@ -82,13 +85,7 @@ update msg model =
 
 view : Model -> Html Msg
 view model =
-    section [] (case model.credentials of
-        Nothing -> 
-            [  welcoming, div [ class "p-4" ] [ form model ] ]
-
-        Just cred ->
-            []
-    )
+    section [] [ welcoming, div [ class "p-4" ] [ form model ] ]
 
 
 welcoming : Html Msg
@@ -130,3 +127,17 @@ form model =
             [ text "Register" ]
         , viewErrors model
         ]
+
+
+
+-- EXPORT
+
+
+toSession : Model -> Session
+toSession model = 
+    model.session
+
+
+updateSession : (Session -> Session) -> Model -> Model
+updateSession updt model =
+    { model | session = updt model.session }

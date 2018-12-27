@@ -11,7 +11,7 @@ import Bootstrap.Grid.Col as Col
 import Bootstrap.Button as Button
 import Bootstrap.Form.Input as Input
 
-import Api exposing (Cred, Service, register)
+import Api exposing (Cred, Session, register)
 
 
 
@@ -19,16 +19,14 @@ import Api exposing (Cred, Service, register)
 
 
 type alias Model =
-    { kratia : Service
-    , credentials : Cred
+    {  session : Session
     }
 
 
-init : Service -> Cred -> ( Model, Cmd Msg )
-init kratia credentials = 
+init : Session -> ( Model, Cmd Msg )
+init session = 
     (
-        { kratia = kratia
-        , credentials = credentials
+        { session = session
         }
         , Cmd.none
     )
