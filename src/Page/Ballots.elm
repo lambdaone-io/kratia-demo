@@ -4,7 +4,7 @@ import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (onClick, onSubmit, onInput)
 import Http as Http
-import Time exposing (Posix, Zone, utc)
+import Time exposing (Posix, Zone, utc, millisToPosix)
 
 import Bootstrap.Grid as Grid
 import Bootstrap.Grid.Col as Col
@@ -29,6 +29,8 @@ import Kratia.Ballot exposing (Ballot)
 type alias Model =
     { session : Session
     , ballots : List Ballot
+    , createBallotInput : String
+    , loadingCreateBallot : Bool
     }
 
 
@@ -37,6 +39,8 @@ init session =
     (
         { session = session
         , ballots = []
+        , createBallotInput = ""
+        , loadingCreateBallot = False
         }
         , Api.listBallots 
             { session = session
@@ -51,6 +55,9 @@ init session =
 
 type Msg 
     = GotBallots ( Result Http.Error ( List Ballot ))
+    | CreateBallotInput String
+    | CreateBallotSubmitted
+    | CreateBallotResponded ( Result Http.Error Ballot )
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -59,8 +66,30 @@ update msg model =
         GotBallots ( Ok ballots ) ->
             ( { model | ballots = ballots }, Cmd.none )
         
-        GotBallots ( Err _ ) ->
-            ( model, Cmd.none )
+        GotBallots ( Err e ) ->
+            ( { model | createBallotInput = Api.errorMessage e } , Cmd.none )
+
+        CreateBallotInput input ->
+            ( { model | createBallotInput = input }, Cmd.none )
+
+        CreateBallotSubmitted ->
+            ( { model | loadingCreateBallot = True } , Api.createBallot 
+                { session = model.session
+                , data = model.createBallotInput
+                , closesOn = millisToPosix 1543190400000
+                , onResponse = CreateBallotResponded
+                } 
+            )
+        
+        CreateBallotResponded ( Ok ballot ) ->
+            ( { model | 
+                loadingCreateBallot = False,
+                createBallotInput = "", 
+                ballots = ballot :: model.ballots
+            }, Cmd.none )
+        
+        CreateBallotResponded ( Err e ) ->
+            ( { model | loadingCreateBallot = False, createBallotInput = Api.errorMessage e }, Cmd.none )
 
 
 
@@ -78,7 +107,9 @@ view model =
                 ]
             , Grid.row []
                 [ Grid.col []
-                    [ div [ class "ballots" ] ( List.map renderBallot model.ballots ) ] 
+                    [ div [ class "ballots" ] <|
+                        ( createBallot model ) :: ( List.map renderBallot model.ballots ) 
+                    ] 
                 ]
             ]
     }
@@ -93,6 +124,38 @@ renderBallot ballot =
             , Block.text [] [ text "Vote now" ]
             ]
         |> Card.view
+
+
+createBallot : Model -> Html Msg
+createBallot model =
+    Card.config [ Card.attrs [ class "ballot" ] ]
+        |> Card.headerH3 [] [ text "Create ballot" ]
+        |> Card.block []
+            [ Block.text [] [ text "Write down the issue that requires a decision" ]
+            , Block.custom <| createBallotForm model
+            ]
+        |> Card.view
+
+
+createBallotForm : Model -> Html Msg
+createBallotForm model =
+    Form.formInline
+        [ onSubmit CreateBallotSubmitted ]
+        [ Input.text [ Input.attrs
+            [ placeholder "Issue at hand"
+            , disabled model.loadingCreateBallot
+            , value model.createBallotInput
+            , onInput CreateBallotInput
+            ] ]
+        , Button.button
+            [ Button.primary
+            , Button.attrs 
+                [ class "ml-sm-2 my-2"
+                , disabled (String.isEmpty model.createBallotInput)
+                ]
+            ]
+            [ text "Submit" ]
+        ]
 
 
 

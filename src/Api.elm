@@ -1,9 +1,10 @@
-module Api exposing (Cred, Flags, Session, guest, withCreds, withNavState, username, register, listBallots)
+module Api exposing (Cred, Flags, Session, guest, withCreds, withNavState, username, register, listBallots, createBallot, errorMessage)
 
 {-| This module is responsible for communicating to the Kratia API. -}
 
 import Browser.Navigation as Nav
 import Bootstrap.Navbar as Navbar
+import Time exposing (Posix, posixToMillis)
 
 import Url.Builder exposing (QueryParameter)
 import Http exposing (Body, Expect)
@@ -128,17 +129,70 @@ register { session, nickname, onResponse } =
 
 listBallots : { session : Session, onResponse : (Result Http.Error (List Ballot) -> msg) } -> Cmd msg
 listBallots { session, onResponse } =
-  case session.credentials of
-    Nothing -> 
-      Cmd.none
+    session |> authed (\ cred ->
+        Http.request
+            { method = "GET"
+            , headers = [ credHeader cred ]
+            , url = url session.config.kratia ["collector"] []
+            , body = Http.emptyBody
+            , expect = Http.expectJson (\result -> onResponse result) (field "data" (list Ballot.decoder))
+            , timeout = Nothing
+            , tracker = Nothing
+            }
+    )
 
-    Just cred ->
-      Http.request
-        { method = "GET"
-        , headers = [ credHeader cred ]
-        , url = url session.config.kratia ["collector"] []
-        , body = Http.emptyBody
-        , expect = Http.expectJson (\result -> onResponse result) (field "data" (list Ballot.decoder))
-        , timeout = Nothing
-        , tracker = Nothing
-        }
+
+createBallot : { session : Session, data : String, closesOn: Posix, onResponse : (Result Http.Error Ballot -> msg) } -> Cmd msg
+createBallot { session, data, closesOn, onResponse } =
+    let
+        closesSeconds = ( posixToMillis closesOn ) // 1000
+        body = Http.jsonBody <| Encode.object
+            [ ("validBallot", Encode.list Encode.string [ "yes", "no" ])
+            , ("data", Encode.string data)
+            , ("closesOn", Encode.int closesSeconds)
+            ]
+    in
+    session |> authed (\ cred ->
+        Http.request
+            { method = "POST"
+            , headers = [ credHeader cred ]
+            , url = url session.config.kratia ["collector"] []
+            , body = body
+            , expect = Http.expectJson (\result -> onResponse result) (field "data" Ballot.decoder)
+            , timeout = Nothing
+            , tracker = Nothing
+            }
+    )
+
+
+
+-- ENDPOINTS HELPERS
+
+
+authed : ( Cred -> Cmd msg ) -> Session  -> Cmd msg
+authed f session = 
+    case session.credentials of 
+        Nothing ->
+            Cmd.none
+        
+        Just cred ->
+            f cred
+
+
+errorMessage : Http.Error -> String
+errorMessage err =
+    case err of
+        Http.BadUrl _ ->
+            "Bad url, this is a bug that should be reported"
+
+        Http.Timeout ->
+            "The server timed out"
+
+        Http.NetworkError ->
+            "Network error"
+
+        Http.BadStatus status ->
+            "Got unexpected response " ++ ( String.fromInt status )
+
+        Http.BadBody _ ->
+            "Bad body on request, this is a bug that should be reported"
