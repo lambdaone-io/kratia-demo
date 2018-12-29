@@ -41,6 +41,11 @@ credHeader (Cred _ token) =
     Http.header "Authorization" ("Bearer " ++ token)
 
 
+{- Hardcoded user used only for speedy manual testing -}
+hardcodedUser : Cred
+hardcodedUser = Cred "User" "37735eb5-77fa-40b8-be62-f04dd9aaea83"
+
+
 
 -- SESSION
 
@@ -69,7 +74,7 @@ type alias Flags =
 
 guest : Flags -> Nav.Key -> Navbar.State -> Session
 guest flags key state =
-    { credentials = Nothing
+    { credentials = Nothing -- Just hardcodedUser -- Change me to Nothing
     , navKey = key
     , navState = state 
     , config = 

@@ -65,11 +65,24 @@ init flags url key =
 
 subscriptions : Model -> Sub Msg
 subscriptions model =
-    let 
-        session =
-            lastSession model
-    in
-    Navbar.subscriptions session.navState NavMsg
+    case model of 
+        Redirect session ->
+            Navbar.subscriptions session.navState NavMsg
+        
+        NotFound session ->
+            Navbar.subscriptions session.navState NavMsg
+        
+        About session -> 
+            Navbar.subscriptions session.navState NavMsg
+        
+        Registration registration ->
+            Navbar.subscriptions registration.session.navState NavMsg
+
+        Ballots ballots ->
+            Sub.batch
+                [ Navbar.subscriptions ballots.session.navState NavMsg
+                , Sub.map BallMsg ( Ball.subscriptions ballots )
+                ]
 
 
 
