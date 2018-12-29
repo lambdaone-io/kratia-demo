@@ -1,10 +1,11 @@
-module Page.Ballots exposing (Model, Msg, init, update, view, toSession, updateSession)
+module Page.Ballots exposing (Model, Msg, init, update, subscriptions, view, toSession, updateSession)
 
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (onClick, onSubmit, onInput)
 import Http as Http
-import Time exposing (Posix, Zone, utc)
+import Task as Task
+import Time as Time exposing (Posix, Zone)
 
 import Bootstrap.Grid as Grid
 import Bootstrap.Grid.Col as Col
@@ -15,6 +16,7 @@ import Bootstrap.Card.Block as Block
 
 import Bootstrap.Form as Form
 import Bootstrap.Form.Input as Input
+import Bootstrap.Form.Radio as Radio
 
 import DateFormat as DateFormat
 
@@ -29,6 +31,11 @@ import Kratia.Ballot exposing (Ballot)
 type alias Model =
     { session : Session
     , ballots : List Ballot
+    , currentTime : Posix
+    , createBallotInput : String
+    , createBallotTimeInput : String
+    , createBallotTimeSelection : TimeSelection
+    , loadingCreateBallot : Bool
     }
 
 
@@ -37,11 +44,19 @@ init session =
     (
         { session = session
         , ballots = []
+        , currentTime = Time.millisToPosix 0
+        , createBallotInput = ""
+        , createBallotTimeInput = ""
+        , createBallotTimeSelection = Minutes
+        , loadingCreateBallot = False
         }
-        , Api.listBallots 
-            { session = session
-            , onResponse = GotBallots
-            }
+        , Cmd.batch
+            [ Task.perform GotTime Time.now
+            , Api.listBallots 
+                { session = session
+                , onResponse = GotBallots
+                }
+            ]
     )
 
 
@@ -51,6 +66,12 @@ init session =
 
 type Msg 
     = GotBallots ( Result Http.Error ( List Ballot ))
+    | GotTime Posix
+    | CreateBallotInput String
+    | CreateBallotTimeInput String
+    | CreateBallotTimeSelection TimeSelection
+    | CreateBallotSubmitted
+    | CreateBallotResponded ( Result Http.Error Ballot )
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -59,8 +80,48 @@ update msg model =
         GotBallots ( Ok ballots ) ->
             ( { model | ballots = ballots }, Cmd.none )
         
-        GotBallots ( Err _ ) ->
-            ( model, Cmd.none )
+        GotBallots ( Err e ) ->
+            ( { model | createBallotInput = Api.errorMessage e } , Cmd.none )
+
+        GotTime time ->
+            ( { model | currentTime = time }, Cmd.none )
+
+        CreateBallotInput input ->
+            ( { model | createBallotInput = input }, Cmd.none )
+
+        CreateBallotTimeInput input ->
+            ( { model | createBallotTimeInput = input }, Cmd.none )
+
+        CreateBallotTimeSelection timeSelection ->
+            ( { model | createBallotTimeSelection = timeSelection }, Cmd.none )
+
+        CreateBallotSubmitted ->
+            ( { model | loadingCreateBallot = True } , Api.createBallot 
+                { session = model.session
+                , data = model.createBallotInput
+                , closesOn = timeSelectionToPosix model.currentTime model.createBallotTimeInput model.createBallotTimeSelection
+                , onResponse = CreateBallotResponded
+                } 
+            )
+        
+        CreateBallotResponded ( Ok ballot ) ->
+            ( { model | 
+                loadingCreateBallot = False,
+                createBallotInput = "", 
+                ballots = ballot :: model.ballots
+            }, Cmd.none )
+        
+        CreateBallotResponded ( Err e ) ->
+            ( { model | loadingCreateBallot = False, createBallotInput = Api.errorMessage e }, Cmd.none )
+
+
+
+-- SUBSCRIPTION
+
+
+subscriptions : Model -> Sub Msg
+subscriptions model =
+    Time.every 1000 GotTime
 
 
 
@@ -78,7 +139,9 @@ view model =
                 ]
             , Grid.row []
                 [ Grid.col []
-                    [ div [ class "ballots" ] ( List.map renderBallot model.ballots ) ] 
+                    [ div [ class "ballots" ] <|
+                        ( createBallot model ) :: ( List.map renderBallot model.ballots ) 
+                    ] 
                 ]
             ]
     }
@@ -87,16 +150,108 @@ view model =
 renderBallot : Ballot -> Html Msg
 renderBallot ballot = 
     Card.config [ Card.attrs [ class "ballot" ] ]
-        |> Card.headerH3 [] [ text ballot.data ]
+        |> Card.headerH4 [] [ text ballot.data ]
         |> Card.block []
-            [ Block.titleH3 [] [ text <| ballotCardFormatter utc ballot.closesOn ]
+            [ Block.titleH5 [] [ text <| ballotCardFormatter Time.utc ballot.closesOn ]
             , Block.text [] [ text "Vote now" ]
             ]
         |> Card.view
 
 
+createBallot : Model -> Html Msg
+createBallot model =
+    Card.config [ Card.attrs [ class "ballot" ] ]
+        |> Card.headerH3 [] [ text "Create ballot" ]
+        |> Card.block []
+            [ Block.custom <| createBallotForm model ]
+        |> Card.view
+
+
+createBallotForm : Model -> Html Msg
+createBallotForm model =
+    Form.form
+        [ onSubmit CreateBallotSubmitted ]
+        [ Form.group []
+            [ Form.label [ for "issueinput" ] [ text "Write down a YES/NO question"]
+            , Input.text 
+                [ Input.attrs
+                    [ placeholder "Issue at hand"
+                    , disabled model.loadingCreateBallot
+                    , value model.createBallotInput
+                    , onInput CreateBallotInput
+                    ]
+                , Input.id "issueinput"
+                ]
+            ]
+        , Form.group []
+            ( [ Form.label [ for "issuetimeinput" ] [ text "Closes in" ] 
+              , Input.number
+                [ Input.attrs
+                    [ placeholder "Lasting time"
+                    , disabled model.loadingCreateBallot
+                    , value model.createBallotTimeInput
+                    , onInput CreateBallotTimeInput
+                    ]
+                , Input.id "issuetimeinput"
+                ]
+              ] ++
+            ( Radio.radioList "timeselect"
+                [ Radio.create 
+                    [ Radio.id "minutes" 
+                    , Radio.checked ( model.createBallotTimeSelection == Minutes )
+                    , Radio.onClick ( CreateBallotTimeSelection Minutes )
+                    ] "Minutes"
+                , Radio.create 
+                    [ Radio.id "hours" 
+                    , Radio.checked ( model.createBallotTimeSelection == Hours )
+                    , Radio.onClick ( CreateBallotTimeSelection Hours )
+                    ] "Hours"
+                , Radio.create 
+                    [ Radio.id "days" 
+                    , Radio.checked ( model.createBallotTimeSelection == Days )
+                    , Radio.onClick ( CreateBallotTimeSelection Days )
+                    ] "Days"
+                ]
+            ) )
+        , Button.button
+            [ Button.primary
+            , Button.attrs 
+                [ class "ml-sm-2 my-2"
+                , disabled (String.isEmpty model.createBallotInput)
+                ]
+            ]
+            [ text "Submit" ]
+        ]
+
+
 
 -- DATE
+
+
+type TimeSelection 
+    = Minutes
+    | Hours
+    | Days
+
+
+timeSelectionToPosix : Posix -> String -> TimeSelection -> Posix
+timeSelectionToPosix now input selection =
+    let 
+        offset = 
+            case selection of 
+                Minutes ->
+                    1000 * 60
+
+                Hours ->
+                    1000 * 60 * 60
+
+                Days ->
+                    1000 * 60 * 60 * 24
+        millis = 
+            ( Time.posixToMillis now ) + offset * ( String.toInt input 
+                |> Maybe.withDefault 0 )
+    in
+    Time.millisToPosix millis
 
 
 ballotCardFormatter : Zone -> Posix -> String
@@ -107,7 +262,9 @@ ballotCardFormatter =
         , DateFormat.dayOfMonthSuffix
         , DateFormat.text ", "
         , DateFormat.hourMilitaryFixed
-        , DateFormat.text ":00 hrs."
+        , DateFormat.text ":"
+        , DateFormat.minuteFixed
+        , DateFormat.text " UTC"
         ]
 
 

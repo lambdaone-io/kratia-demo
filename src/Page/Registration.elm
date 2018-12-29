@@ -12,8 +12,11 @@ import Bootstrap.Grid.Col as Col
 import Bootstrap.Button as Button
 import Bootstrap.Form.Input as Input
 import Bootstrap.Alert as Alert
+import Bootstrap.Text as Text
+import Bootstrap.Card as Card
+import Bootstrap.Card.Block as Block
 
-import Api exposing (Cred, Session, register, withCreds)
+import Api exposing (Cred, Session, register, withCreds, errorMessage)
 import Route as Route
 
 
@@ -72,7 +75,7 @@ update msg model =
             )
 
         Registered (Err err) ->
-            ( { model | loading = False, errorMessages = model.errorMessages ++ [(Debug.toString err)] }
+            ( { model | loading = False, errorMessages = ( errorMessage err ) :: model.errorMessages }
             , Cmd.none 
             )
 
@@ -91,16 +94,10 @@ view model =
         Grid.container []
             [ Grid.row [] 
                 [ Grid.col [] 
-                    [ welcoming, div [ class "p-4" ] [ form model ] ] 
+                    [ formCard model ] 
                 ]
             ]
     }
-
-
-welcoming : Html Msg
-welcoming =
-    div []
-        [ p [] [ text "To start with the demo, please register with a nickname:" ] ]
 
 
 viewErrors : Model -> Html Msg
@@ -113,6 +110,28 @@ viewErrors model =
             ] ++ (List.map (\txt -> p [] [text txt]) model.errorMessages))
         |> Alert.view (if List.isEmpty model.errorMessages then Alert.closed else Alert.shown)
 
+
+formCard : Model -> Html Msg
+formCard model =
+    Card.config [ Card.align Text.alignXsCenter ]
+        |> Card.headerH2 [] [ text "Register" ]
+        |> Card.block []
+            [ Block.text [] [ text "To start with the demo, please register with a nickname" ]
+            , Block.custom <| formGrid model
+            ]
+        |> Card.view
+
+
+formGrid : Model -> Html Msg
+formGrid model =
+    Grid.container []
+        [ Grid.row []
+            [ Grid.col [] []
+            , Grid.col [] [ form model ]
+            , Grid.col [] []
+            ]
+        ]
+        
 
 form : Model -> Html Msg
 form model =

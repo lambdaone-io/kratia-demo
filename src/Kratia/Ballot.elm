@@ -23,5 +23,7 @@ decoder =
     Decode.succeed Ballot
         |> required "ballotBox" Decode.string
         |> required "ballot" ( Decode.list ( Decode.string ))
-        |> required "closesOn" ( Decode.map millisToPosix Decode.int )
+        |> required "closesOn" ( Decode.int
+            |> Decode.map ( \x -> x * 1000 )
+            |> Decode.map millisToPosix )
         |> required "data" Decode.string
