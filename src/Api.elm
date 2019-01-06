@@ -1,4 +1,4 @@
-module Api exposing (Cred, Flags, Session, guest, withCreds, withNavState, username, register, listBallots, createBallot, errorMessage)
+module Api exposing (Cred, Flags, Session, guest, withCreds, withNavState, username, register, listBallots, createBallot, errorMessage, voteBinary)
 
 {-| This module is responsible for communicating to the Kratia API. -}
 
@@ -43,7 +43,7 @@ credHeader (Cred _ token) =
 
 {- Hardcoded user used only for speedy manual testing -}
 hardcodedUser : Cred
-hardcodedUser = Cred "User" "37735eb5-77fa-40b8-be62-f04dd9aaea83"
+hardcodedUser = Cred "User" "fdc7dcc3-3ecb-48c2-9954-334267623530"
 
 
 
@@ -126,7 +126,9 @@ register { session, nickname, onResponse } =
     { url = url session.config.kratia ["registry"] []
     , body = Http.jsonBody <| Encode.object 
       [ ( "community", Encode.string rootCommunity )
-      , ( "data", Encode.string nickname )
+      , ( "data", Encode.object 
+            [ ( "nickname", Encode.string nickname ) ]
+        )
       ]
     , expect = Http.expectJson (\result -> onResponse <| Result.map (Cred nickname) result ) (field "member" string)
     }
@@ -147,10 +149,10 @@ listBallots { session, onResponse } =
     )
 
 
-createBallot : { session : Session, data : String, closesOn: Posix, onResponse : (Result Http.Error Ballot -> msg) } -> Cmd msg
+createBallot : { session : Session, data : String, closesOn: Int, onResponse : (Result Http.Error Ballot -> msg) } -> Cmd msg
 createBallot { session, data, closesOn, onResponse } =
     let
-        closesSeconds = ( posixToMillis closesOn ) // 1000
+        closesSeconds = closesOn // 1000
         body = Http.jsonBody <| Encode.object
             [ ("validBallot", Encode.list Encode.string [ "yes", "no" ])
             , ("data", Encode.string data)
@@ -164,6 +166,31 @@ createBallot { session, data, closesOn, onResponse } =
             , url = url session.config.kratia ["collector"] []
             , body = body
             , expect = Http.expectJson (\result -> onResponse result) (field "data" Ballot.decoder)
+            , timeout = Nothing
+            , tracker = Nothing
+            }
+    )
+
+
+voteBinary : { session : Session, box : String, vote : Bool, onResponse : (Result Http.Error (String, String) -> msg) } -> Cmd msg
+voteBinary { session, box, vote, onResponse } =
+    let 
+        vote0 = 
+            if vote 
+            then Encode.object [ ("yes", Encode.float 1.0), ("no", Encode.float 0.0) ]
+            else Encode.object [ ("yes", Encode.float 0.0), ("no", Encode.float 1.0) ]
+        body = Http.jsonBody <| Encode.object
+            [ ("ballotBox", Encode.string box)
+            , ("vote", vote0)
+            ]
+    in
+    session |> authed (\ cred ->
+        Http.request
+            { method = "POST"
+            , headers = [ credHeader cred ]
+            , url = url session.config.kratia ["collector", "vote"] []
+            , body = body
+            , expect = Http.expectJson (\result -> onResponse <| Result.map (\proof -> (box, proof)) result) (field "proof" string)
             , timeout = Nothing
             , tracker = Nothing
             }
