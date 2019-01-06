@@ -106,7 +106,7 @@ update msg model =
             ( { model | loadingCreateBallot = True } , Api.createBallot 
                 { session = model.session
                 , data = model.createBallotInput
-                , closesOn = timeSelectionToPosix model.currentTime model.createBallotTimeInput model.createBallotTimeSelection
+                , closesOn = timeSelectionToMillis model.createBallotTimeInput model.createBallotTimeSelection
                 , onResponse = CreateBallotResponded
                 } 
             )
@@ -292,8 +292,8 @@ type TimeSelection
     | Days
 
 
-timeSelectionToPosix : Posix -> String -> TimeSelection -> Posix
-timeSelectionToPosix now input selection =
+timeSelectionToMillis : String -> TimeSelection -> Int
+timeSelectionToMillis input selection =
     let 
         offset = 
             case selection of 
@@ -306,10 +306,9 @@ timeSelectionToPosix now input selection =
                 Days ->
                     1000 * 60 * 60 * 24
         millis = 
-            ( Time.posixToMillis now ) + offset * ( String.toInt input 
-                |> Maybe.withDefault 0 )
+            offset * ( String.toInt input |> Maybe.withDefault 0 )
     in
-    Time.millisToPosix millis
+    millis
 
 
 ballotCardFormatter : Zone -> Posix -> String

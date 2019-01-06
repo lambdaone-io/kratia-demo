@@ -149,10 +149,10 @@ listBallots { session, onResponse } =
     )
 
 
-createBallot : { session : Session, data : String, closesOn: Posix, onResponse : (Result Http.Error Ballot -> msg) } -> Cmd msg
+createBallot : { session : Session, data : String, closesOn: Int, onResponse : (Result Http.Error Ballot -> msg) } -> Cmd msg
 createBallot { session, data, closesOn, onResponse } =
     let
-        closesSeconds = ( posixToMillis closesOn ) // 1000
+        closesSeconds = closesOn // 1000
         body = Http.jsonBody <| Encode.object
             [ ("validBallot", Encode.list Encode.string [ "yes", "no" ])
             , ("data", Encode.string data)
