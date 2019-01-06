@@ -30,13 +30,18 @@ import Kratia.Ballot exposing (Ballot)
 
 type alias Model =
     { session : Session
-    , ballots : List Ballot
+    , ballots : List Ballots
     , currentTime : Posix
     , createBallotInput : String
     , createBallotTimeInput : String
     , createBallotTimeSelection : TimeSelection
     , loadingCreateBallot : Bool
     }
+
+
+type Ballots 
+    = AlreadyVoted String Ballot
+    | YetToVote Ballot
 
 
 init : Session -> ( Model, Cmd Msg )
@@ -72,13 +77,15 @@ type Msg
     | CreateBallotTimeSelection TimeSelection
     | CreateBallotSubmitted
     | CreateBallotResponded ( Result Http.Error Ballot )
+    | Voted String Bool
+    | VotedBinaryResponded ( Result Http.Error (String, String) )
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of 
         GotBallots ( Ok ballots ) ->
-            ( { model | ballots = ballots }, Cmd.none )
+            ( { model | ballots = List.map YetToVote ballots }, Cmd.none )
         
         GotBallots ( Err e ) ->
             ( { model | createBallotInput = Api.errorMessage e } , Cmd.none )
@@ -108,12 +115,38 @@ update msg model =
             ( { model | 
                 loadingCreateBallot = False,
                 createBallotInput = "", 
-                ballots = ballot :: model.ballots
+                ballots = YetToVote ballot :: model.ballots
             }, Cmd.none )
         
         CreateBallotResponded ( Err e ) ->
             ( { model | loadingCreateBallot = False, createBallotInput = Api.errorMessage e }, Cmd.none )
 
+        Voted box vote ->
+            ( model, Api.voteBinary 
+                { session = model.session
+                , box = box
+                , vote = vote
+                , onResponse = VotedBinaryResponded
+                } 
+            )
+
+        VotedBinaryResponded ( Err e ) -> 
+            ( { model | loadingCreateBallot = False, createBallotInput = Api.errorMessage e }, Cmd.none )
+        
+        VotedBinaryResponded ( Ok ( resBallot, proof ) ) ->
+            let 
+                updateBallot ballot = 
+                    case ballot of 
+                        YetToVote ballot0 -> 
+                            if ballot0.ballotBox == resBallot
+                            then AlreadyVoted proof ballot0
+                            else YetToVote ballot0
+                        other -> 
+                            other
+                newBallots = 
+                    List.map updateBallot model.ballots
+            in
+            ( { model | ballots = newBallots }, Cmd.none )
 
 
 -- SUBSCRIPTION
@@ -140,22 +173,15 @@ view model =
             , Grid.row []
                 [ Grid.col []
                     [ div [ class "ballots" ] <|
-                        ( createBallot model ) :: ( List.map renderBallot model.ballots ) 
+                        ( createBallot model ) :: ( List.map renderFutureBallot model.ballots ) 
                     ] 
                 ]
             ]
     }
 
 
-renderBallot : Ballot -> Html Msg
-renderBallot ballot = 
-    Card.config [ Card.attrs [ class "ballot" ] ]
-        |> Card.headerH4 [] [ text ballot.data ]
-        |> Card.block []
-            [ Block.titleH5 [] [ text <| ballotCardFormatter Time.utc ballot.closesOn ]
-            , Block.text [] [ text "Vote now" ]
-            ]
-        |> Card.view
+
+-- CREATE BALLOT FORM
 
 
 createBallot : Model -> Html Msg
@@ -224,6 +250,38 @@ createBallotForm model =
         ]
 
 
+
+-- RENDER FUTURE BALLOTS 
+
+
+renderFutureBallot : Ballots -> Html Msg 
+renderFutureBallot ballot = 
+    case ballot of 
+        YetToVote ballot0 ->
+            Card.config [ Card.attrs [ class "ballot" ] ]
+                |> Card.headerH4 [] [ text ballot0.data ]
+                |> Card.block []
+                    [ Block.titleH5 [] [ text <| ballotCardFormatter Time.utc ballot0.closesOn ]
+                    , Block.text [] [ renderVoteButtons ballot0 ]
+                    ]
+                |> Card.view
+        
+        AlreadyVoted proof ballot0 ->
+            Card.config [ Card.attrs [ class "ballot" ] ]
+                |> Card.headerH4 [] [ text ballot0.data ]
+                |> Card.block []
+                    [ Block.titleH5 [] [ text <| ballotCardFormatter Time.utc ballot0.closesOn ]
+                    , Block.text [] [ text ( "Proof of vote: " ++ proof ) ]
+                    ]
+                |> Card.view
+
+
+renderVoteButtons : Ballot -> Html Msg
+renderVoteButtons ballot = 
+    div []
+        [ Button.button [ Button.info, Button.attrs [ onClick ( Voted ballot.ballotBox True ) ] ] [ text "Yes" ]
+        , Button.button [ Button.warning, Button.attrs [ onClick ( Voted ballot.ballotBox False ) ] ] [ text "No" ]
+        ]
 
 -- DATE
 
