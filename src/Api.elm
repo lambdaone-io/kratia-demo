@@ -1,4 +1,6 @@
-module Api exposing (Cred, Flags, Session, guest, withCreds, withNavState, username, register, listBallots, createBallot, errorMessage, voteBinary)
+module Api exposing (
+    Cred, Flags, Session, guest, withCreds, withNavState, username, register, 
+    listBallots, listClosedBallots, createBallot, errorMessage, voteBinary)
 
 {-| This module is responsible for communicating to the Kratia API. -}
 
@@ -11,7 +13,7 @@ import Http exposing (Body, Expect)
 import Json.Decode as Decode exposing (Decoder, Value, field, string, list)
 import Json.Encode as Encode
 
-import Kratia.Ballot as Ballot exposing (Ballot)
+import Kratia.Ballot as Ballot exposing (Ballot, ClosedBallot)
 
 
 -- CRED
@@ -74,7 +76,7 @@ type alias Flags =
 
 guest : Flags -> Nav.Key -> Navbar.State -> Session
 guest flags key state =
-    { credentials = Nothing -- Just hardcodedUser -- Change me to Nothing
+    { credentials = Just hardcodedUser -- Change me to Nothing
     , navKey = key
     , navState = state 
     , config = 
@@ -143,6 +145,21 @@ listBallots { session, onResponse } =
             , url = url session.config.kratia ["collector"] []
             , body = Http.emptyBody
             , expect = Http.expectJson (\result -> onResponse result) (field "data" (list Ballot.decoder))
+            , timeout = Nothing
+            , tracker = Nothing
+            }
+    )
+
+
+listClosedBallots : { session : Session, onResponse : (Result Http.Error (List ClosedBallot) -> msg ) } -> Cmd msg
+listClosedBallots { session, onResponse } =
+    session |> authed (\ cred ->
+        Http.request
+            { method = "GET"
+            , headers = [ credHeader cred ]
+            , url = url session.config.kratia ["collector", "finished"] []
+            , body = Http.emptyBody
+            , expect = Http.expectJson (\result -> onResponse result) (field "data" (list Ballot.decoderClosed))
             , timeout = Nothing
             , tracker = Nothing
             }

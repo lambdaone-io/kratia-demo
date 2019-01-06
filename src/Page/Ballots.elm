@@ -21,7 +21,7 @@ import Bootstrap.Form.Radio as Radio
 import DateFormat as DateFormat
 
 import Api as Api exposing (Session)
-import Kratia.Ballot exposing (Ballot)
+import Kratia.Ballot exposing (Ballot, ClosedBallot)
 
 
 
@@ -31,6 +31,7 @@ import Kratia.Ballot exposing (Ballot)
 type alias Model =
     { session : Session
     , ballots : List Ballots
+    , closedBallots : List ClosedBallot
     , currentTime : Posix
     , createBallotInput : String
     , createBallotTimeInput : String
@@ -49,6 +50,7 @@ init session =
     (
         { session = session
         , ballots = []
+        , closedBallots = []
         , currentTime = Time.millisToPosix 0
         , createBallotInput = ""
         , createBallotTimeInput = ""
@@ -61,6 +63,10 @@ init session =
                 { session = session
                 , onResponse = GotBallots
                 }
+            , Api.listClosedBallots 
+                { session = session
+                , onResponse = GotClosedBallots
+                }
             ]
     )
 
@@ -70,7 +76,8 @@ init session =
 
 
 type Msg 
-    = GotBallots ( Result Http.Error ( List Ballot ))
+    = GotBallots ( Result Http.Error ( List Ballot ) )
+    | GotClosedBallots ( Result Http.Error ( List ClosedBallot ) )
     | GotTime Posix
     | CreateBallotInput String
     | CreateBallotTimeInput String
@@ -86,10 +93,16 @@ update msg model =
     case msg of 
         GotBallots ( Ok ballots ) ->
             ( { model | ballots = List.map YetToVote ballots }, Cmd.none )
-        
+
         GotBallots ( Err e ) ->
             ( { model | createBallotInput = Api.errorMessage e } , Cmd.none )
 
+        GotClosedBallots ( Ok ballots ) ->
+            ( { model | closedBallots = ballots }, Cmd.none )
+
+        GotClosedBallots ( Err e ) ->
+            ( { model | createBallotInput = Api.errorMessage e } , Cmd.none )
+        
         GotTime time ->
             ( { model | currentTime = time }, Cmd.none )
 
@@ -173,7 +186,7 @@ view model =
             , Grid.row []
                 [ Grid.col []
                     [ div [ class "ballots" ] <|
-                        ( createBallot model ) :: ( List.map renderFutureBallot model.ballots ) 
+                        ( ( createBallot model ) :: ( List.map renderFutureBallot model.ballots ) ) ++ ( List.map renderClosedBallot model.closedBallots )
                     ] 
                 ]
             ]
@@ -282,6 +295,23 @@ renderVoteButtons ballot =
         [ Button.button [ Button.info, Button.attrs [ onClick ( Voted ballot.ballotBox True ) ] ] [ text "Yes" ]
         , Button.button [ Button.warning, Button.attrs [ onClick ( Voted ballot.ballotBox False ) ] ] [ text "No" ]
         ]
+
+
+
+-- RENDER CLOSED BALLOTS 
+
+
+renderClosedBallot : ClosedBallot -> Html Msg
+renderClosedBallot ballot =
+    Card.config [ Card.attrs [ class "ballot" ] ]
+        |> Card.headerH4 [] [ text ballot.data ]
+        |> Card.block []
+            [ Block.titleH5 [] [ text <| ballotCardFormatter Time.utc ballot.closedOn ]
+            , Block.text [] ( List.map (\r -> text r ) ballot.resolution )
+            ]
+        |> Card.view
+
+
 
 -- DATE
 
