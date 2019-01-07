@@ -1,4 +1,4 @@
-module Kratia.Ballot exposing (Ballot, decoder)
+module Kratia.Ballot exposing (Ballot, ClosedBallot, decoder, decoderClosed)
 
 
 import Time exposing (Posix, millisToPosix)
@@ -18,12 +18,34 @@ type alias Ballot =
     }
 
 
+type alias ClosedBallot =
+    { ballotBox : String
+    , closedOn : Posix
+    , data : String
+    , resolution : List String
+    }
+
+
 decoder : Decoder Ballot
 decoder =
     Decode.succeed Ballot
         |> required "ballotBox" Decode.string
-        |> required "ballot" ( Decode.list ( Decode.string ))
-        |> required "closesOn" ( Decode.int
-            |> Decode.map ( \x -> x * 1000 )
-            |> Decode.map millisToPosix )
+        |> required "ballot" ( Decode.list ( Decode.string ) )
+        |> required "closesOn" decodePosix
         |> required "data" Decode.string
+
+
+decoderClosed : Decoder ClosedBallot
+decoderClosed =
+    Decode.succeed ClosedBallot
+        |> required "address" Decode.string
+        |> required "closedOn" decodePosix
+        |> required "data" Decode.string
+        |> required "resolution" ( Decode.list ( Decode.string ) )
+
+
+decodePosix : Decoder Posix 
+decodePosix =
+    Decode.int
+        |> Decode.map ( \x -> x * 1000 )
+        |> Decode.map millisToPosix 
