@@ -76,7 +76,7 @@ type alias Flags =
 
 guest : Flags -> Nav.Key -> Navbar.State -> Session
 guest flags key state =
-    { credentials = Just hardcodedUser -- Change me to Nothing
+    { credentials = Nothing -- Just hardcodedUser -- Change me to Nothing
     , navKey = key
     , navState = state 
     , config = 
