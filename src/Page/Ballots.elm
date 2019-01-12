@@ -186,7 +186,8 @@ view model =
             , Grid.row []
                 [ Grid.col []
                     [ div [ class "ballots" ] <|
-                        ( ( createBallot model ) :: ( List.map renderFutureBallot model.ballots ) ) ++ ( List.map renderClosedBallot model.closedBallots )
+                        -- ( ( createBallot model ) :: ( ) )
+                        ( List.map renderFutureBallot model.ballots ) ++ ( List.map renderClosedBallot model.closedBallots )
                     ] 
                 ]
             ]
@@ -272,18 +273,18 @@ renderFutureBallot ballot =
     case ballot of 
         YetToVote ballot0 ->
             Card.config [ Card.attrs [ class "ballot" ] ]
-                |> Card.headerH4 [] [ text ballot0.data ]
+                |> Card.headerH4 [] [ a [ href ballot0.data.pull_request.html_url ] [ text <| "Pull Request " ++ String.fromInt ballot0.data.number ] ]
                 |> Card.block []
-                    [ Block.titleH5 [] [ text <| ballotCardFormatter Time.utc ballot0.closesOn ]
+                    [ Block.titleH5 [] [ text <| "Ballot closes on: " ++ ballotCardFormatter Time.utc ballot0.closesOn ]
                     , Block.text [] [ renderVoteButtons ballot0 ]
                     ]
                 |> Card.view
         
         AlreadyVoted proof ballot0 ->
             Card.config [ Card.attrs [ class "ballot" ] ]
-                |> Card.headerH4 [] [ text ballot0.data ]
+                |> Card.headerH4 [] [ a [ href ballot0.data.pull_request.html_url ] [ text <| "Pull Request " ++ String.fromInt ballot0.data.number ] ]
                 |> Card.block []
-                    [ Block.titleH5 [] [ text <| ballotCardFormatter Time.utc ballot0.closesOn ]
+                    [ Block.titleH5 [] [ text <| "Ballot closes on: " ++ ballotCardFormatter Time.utc ballot0.closesOn ]
                     , Block.text [] [ text ( "Proof of vote: " ++ proof ) ]
                     ]
                 |> Card.view
@@ -303,11 +304,16 @@ renderVoteButtons ballot =
 
 renderClosedBallot : ClosedBallot -> Html Msg
 renderClosedBallot ballot =
+    let 
+        prUrl = ballot.data.pull_request.html_url
+        prNum = String.fromInt ballot.data.number
+        ballotClosedOn = ballotCardFormatter Time.utc ballot.closedOn
+    in
     Card.config [ Card.attrs [ class "ballot" ] ]
-        |> Card.headerH4 [] [ text ballot.data ]
+        |> Card.headerH4 [] [ a [ href prUrl ] [ text <| "Pull Request " ++ prNum ] ]
         |> Card.block []
-            [ Block.titleH5 [] [ text <| ballotCardFormatter Time.utc ballot.closedOn ]
-            , Block.text [] ( List.map (\r -> text r ) ballot.resolution )
+            [ Block.titleH5 [] [ text <| "Ballot closed on: " ++ ballotClosedOn ]
+            , Block.text [] ( List.map (\r -> text <| "Merged: " ++ r ) ballot.resolution )
             ]
         |> Card.view
 

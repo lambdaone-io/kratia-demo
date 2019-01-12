@@ -45,7 +45,7 @@ credHeader (Cred _ token) =
 
 {- Hardcoded user used only for speedy manual testing -}
 hardcodedUser : Cred
-hardcodedUser = Cred "User" "fdc7dcc3-3ecb-48c2-9954-334267623530"
+hardcodedUser = Cred "User" "ef4db061-da40-48ae-816b-c3f554af7cc3"
 
 
 
